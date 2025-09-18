@@ -1,0 +1,25 @@
+name: tic_tac_toe_game
+description: A professional Tic Tac Toe game for iOS & Android
+publish_to: "none" # private app
+
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.3.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.5
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^2.0.1
+
+flutter:
+
+  uses-material-design: true
+
+  assets:
+    - assets/logo.png
