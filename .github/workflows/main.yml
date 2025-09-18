@@ -56,23 +56,8 @@ jobs:
           flutter build apk --release --no-tree-shake-icons
           flutter build appbundle --release
 
-      # 8. Copy Android artifacts
-      - name: Copy Android Builds
-        run: |
-          mkdir -p build_artifacts/android
-          cp build/app/outputs/flutter-apk/app-release.apk build_artifacts/android/
-          cp build/app/outputs/bundle/release/app-release.aab build_artifacts/android/
-
-      # 9. Build iOS (no code signing)
-      - name: Build iOS
-        run: flutter build ios --release --no-codesign
-
-      # 10. Copy iOS artifact
-      - name: Copy iOS Builds
-        run: |
-          mkdir -p build_artifacts/ios
-          cp -r build/ios/iphoneos/Runner.app build_artifacts/ios/
-
+      
+      
       # 11. Upload all artifacts
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
