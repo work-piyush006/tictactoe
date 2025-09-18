@@ -1,5 +1,7 @@
 name: tic_tac_toe_game
-description: Ultimate Tic Tac Toe Game with AI & Multiplayer
+description: A Tic Tac Toe Flutter Game
+publish_to: 'none' # private project
+
 version: 1.0.0+1
 
 environment:
@@ -20,3 +22,9 @@ flutter:
 
   assets:
     - assets/logo.png
+
+  # Fonts (optional, remove if not used)
+  # fonts:
+  #   - family: Roboto
+  #     fonts:
+  #       - asset: assets/fonts/Roboto-Regular.ttf
