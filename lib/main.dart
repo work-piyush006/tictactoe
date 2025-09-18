@@ -264,6 +264,7 @@ class DifficultyDialog extends StatelessWidget {
           difficultyButton(context, "Medium"),
           difficultyButton(context, "Hard"),
           difficultyButton(context, "Expert"),
+          difficultyButton(context, "Super Expert"), // 👈 New Added
         ],
       ),
     );
@@ -354,7 +355,9 @@ class _GameScreenState extends State<GameScreen> {
     switch (widget.difficulty) {
       case "Easy":
         return empty[random.nextInt(empty.length)];
+
       case "Medium":
+        // block human winning move
         for (int i in empty) {
           board[i] = human;
           if (checkWinner(human)) {
@@ -364,7 +367,9 @@ class _GameScreenState extends State<GameScreen> {
           board[i] = "";
         }
         return empty[random.nextInt(empty.length)];
+
       case "Hard":
+        // win if possible
         for (int i in empty) {
           board[i] = comp;
           if (checkWinner(comp)) {
@@ -373,6 +378,7 @@ class _GameScreenState extends State<GameScreen> {
           }
           board[i] = "";
         }
+        // block human
         for (int i in empty) {
           board[i] = human;
           if (checkWinner(human)) {
@@ -382,7 +388,9 @@ class _GameScreenState extends State<GameScreen> {
           board[i] = "";
         }
         return empty[random.nextInt(empty.length)];
+
       case "Expert":
+        // Best move with minimax
         int bestScore = -1000;
         int bestMove = empty[0];
         for (int i in empty) {
@@ -395,6 +403,26 @@ class _GameScreenState extends State<GameScreen> {
           }
         }
         return bestMove;
+
+      case "Super Expert":
+        // 99% smart + 1% random
+        if (random.nextInt(100) == 0) {
+          return empty[random.nextInt(empty.length)];
+        } else {
+          int bestScore = -1000;
+          int bestMove = empty[0];
+          for (int i in empty) {
+            board[i] = comp;
+            int score = minimax(board, 0, false);
+            board[i] = "";
+            if (score > bestScore) {
+              bestScore = score;
+              bestMove = i;
+            }
+          }
+          return bestMove;
+        }
+
       default:
         return empty[random.nextInt(empty.length)];
     }
