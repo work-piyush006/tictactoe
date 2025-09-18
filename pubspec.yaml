@@ -1,23 +1,24 @@
 name: tic_tac_toe_game
-description: A professional Tic Tac Toe game with AI, multiplayer, and arena (coming soon).
-publish_to: "none" # private app
+description: A Tic Tac Toe game with AI and multiplayer modes.
 
-version: 1.0.0+1
-
+# Flutter & Dart version
 environment:
-  sdk: ">=3.3.0 <4.0.0"
-  flutter: ">=3.13.0"
+  sdk: ">=3.1.0 <4.0.0"
+  flutter: ">=3.10.0 <4.0.0"
 
+# Dependencies
 dependencies:
   flutter:
     sdk: flutter
+
   cupertino_icons: ^1.0.5
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^2.0.1
+  flutter_lints: ^2.0.0
 
+# Flutter assets
 flutter:
   uses-material-design: true
 
