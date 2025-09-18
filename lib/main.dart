@@ -322,7 +322,7 @@ class _GameScreenState extends State<GameScreen> {
       board[index] = currentPlayer;
     });
 
-    if (checkWinner(currentPlayer)) {
+    if (_checkWinner(board, currentPlayer)) {
       showWinnerDialog("$currentPlayer Wins!");
       return;
     } else if (!board.contains("")) {
@@ -360,7 +360,7 @@ class _GameScreenState extends State<GameScreen> {
         // block human winning move
         for (int i in empty) {
           board[i] = human;
-          if (checkWinner(human)) {
+          if (_checkWinner(board, human)) {
             board[i] = "";
             return i;
           }
@@ -372,7 +372,7 @@ class _GameScreenState extends State<GameScreen> {
         // win if possible
         for (int i in empty) {
           board[i] = comp;
-          if (checkWinner(comp)) {
+          if (_checkWinner(board, comp)) {
             board[i] = "";
             return i;
           }
@@ -381,7 +381,7 @@ class _GameScreenState extends State<GameScreen> {
         // block human
         for (int i in empty) {
           board[i] = human;
-          if (checkWinner(human)) {
+          if (_checkWinner(board, human)) {
             board[i] = "";
             return i;
           }
@@ -390,12 +390,11 @@ class _GameScreenState extends State<GameScreen> {
         return empty[random.nextInt(empty.length)];
 
       case "Expert":
-        // Best move with minimax
         int bestScore = -1000;
         int bestMove = empty[0];
         for (int i in empty) {
           board[i] = comp;
-          int score = minimax(board, 0, false);
+          int score = minimax(board, 0, false, comp, human);
           board[i] = "";
           if (score > bestScore) {
             bestScore = score;
@@ -405,15 +404,15 @@ class _GameScreenState extends State<GameScreen> {
         return bestMove;
 
       case "Super Expert":
-        // 99% smart + 1% random
         if (random.nextInt(100) == 0) {
+          // 1% random
           return empty[random.nextInt(empty.length)];
         } else {
           int bestScore = -1000;
           int bestMove = empty[0];
           for (int i in empty) {
             board[i] = comp;
-            int score = minimax(board, 0, false);
+            int score = minimax(board, 0, false, comp, human);
             board[i] = "";
             if (score > bestScore) {
               bestScore = score;
@@ -428,45 +427,40 @@ class _GameScreenState extends State<GameScreen> {
     }
   }
 
-  int minimax(List<String> b, int depth, bool isMax) {
-    if (checkWinner("X")) return widget.playerSymbol == "X" ? -10 : 10;
-    if (checkWinner("O")) return widget.playerSymbol == "O" ? -10 : 10;
-    if (!b.contains("")) return 0;
-
-    String player = isMax ? (currentPlayer == "X" ? "O" : "X") : (currentPlayer == "X" ? "X" : "O");
-    List<int> empty = [];
-    for (int i = 0; i < 9; i++) if (b[i] == "") empty.add(i);
+  int minimax(List<String> b, int depth, bool isMax, String ai, String human) {
+    if (_checkWinner(b, ai)) return 10 - depth; // AI wins
+    if (_checkWinner(b, human)) return depth - 10; // Human wins
+    if (!b.contains("")) return 0; // Draw
 
     int bestScore = isMax ? -1000 : 1000;
 
-    for (int i in empty) {
-      b[i] = player;
-      int score = minimax(b, depth + 1, !isMax);
-      b[i] = "";
-      if (isMax) {
-        if (score > bestScore) bestScore = score;
-      } else {
-        if (score < bestScore) bestScore = score;
+    for (int i = 0; i < 9; i++) {
+      if (b[i] == "") {
+        b[i] = isMax ? ai : human;
+        int score = minimax(b, depth + 1, !isMax, ai, human);
+        b[i] = "";
+        if (isMax) {
+          bestScore = max(score, bestScore);
+        } else {
+          bestScore = min(score, bestScore);
+        }
       }
     }
     return bestScore;
   }
 
-  bool checkWinner(String player) {
+  bool _checkWinner(List<String> b, String player) {
     List<List<int>> wins = [
-      [0, 1, 2],
-      [3, 4, 5],
-      [6, 7, 8],
-      [0, 3, 6],
-      [1, 4, 7],
-      [2, 5, 8],
-      [0, 4, 8],
-      [2, 4, 6]
+      [0, 1, 2], [3, 4, 5], [6, 7, 8],
+      [0, 3, 6], [1, 4, 7], [2, 5, 8],
+      [0, 4, 8], [2, 4, 6]
     ];
     for (var line in wins) {
-      if (board[line[0]] == player &&
-          board[line[1]] == player &&
-          board[line[2]] == player) return true;
+      if (b[line[0]] == player &&
+          b[line[1]] == player &&
+          b[line[2]] == player) {
+        return true;
+      }
     }
     return false;
   }
