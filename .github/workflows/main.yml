@@ -14,47 +14,64 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    # 1. Checkout repository
     - name: Checkout Repository
       uses: actions/checkout@v3
 
+    # 2. Setup Flutter (compatible with Dart 3.1.x)
     - name: Setup Flutter
       uses: subosito/flutter-action@v2
       with:
-        flutter-version: '3.13.8'
+        flutter-version: '3.10.6' # Flutter 3.10.x compatible with Dart 3.1.x
         channel: stable
 
+    # 3. Get dependencies
     - name: Flutter Pub Get
       run: flutter pub get
 
+    # 4. Always recreate android & ios folders
     - name: Recreate Android & iOS folders
       run: |
         rm -rf android ios
-        mkdir -p android ios
+        flutter create .
 
+    # 5. Replace default Flutter logo
     - name: Replace Flutter Logo
       run: |
+        LOGO_PATH="assets/logo.png"
         mkdir -p assets
-        echo "Make sure assets/logo.png exists for your custom logo"
+        if [ -f "$LOGO_PATH" ]; then
+          echo "Custom logo exists: $LOGO_PATH"
+        else
+          echo "Place your custom logo at $LOGO_PATH"
+        fi
 
+    # 6. Clean previous builds
     - name: Flutter Clean
       run: flutter clean
 
+    # 7. Build Android APK
     - name: Build Android APK
       run: flutter build apk --release --no-tree-shake-icons
 
-    - name: Build iOS (no codesign)
+    # 8. Build iOS (no codesign)
+    - name: Build iOS
       run: flutter build ios --release --no-codesign
 
-    - name: Create artifact folders
-      run: mkdir -p build_artifacts/android build_artifacts/ios
+    # 9. Create artifact folders
+    - name: Create Artifact Folders
+      run: |
+        mkdir -p build_artifacts/android
+        mkdir -p build_artifacts/ios
 
-    - name: Copy Android APK
-      run: cp build/app/outputs/flutter-apk/app-release.apk build_artifacts/android/
+    # 10. Copy builds
+    - name: Copy Android & iOS builds
+      run: |
+        cp build/app/outputs/flutter-apk/app-release.apk build_artifacts/android/
+        cp -r build/ios/iphoneos/Runner.app build_artifacts/ios/
 
-    - name: Copy iOS App
-      run: cp -r build/ios/iphoneos/Runner.app build_artifacts/ios/
-
-    - name: Upload Artifacts
+    # 11. Upload all artifacts
+    - name: Upload Build Artifacts
       uses: actions/upload-artifact@v4
       with:
         name: flutter-build
