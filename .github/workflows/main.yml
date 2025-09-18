@@ -1,4 +1,4 @@
-name: Flutter CI/CD Build
+name: Flutter Android Build
 
 on:
   push:
@@ -10,57 +10,61 @@ on:
 
 jobs:
   build:
-    name: Build Flutter App
+    name: Build Android APK
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout repository
-      - name: Checkout Repository
-        uses: actions/checkout@v3
+    # 1. Checkout repo
+    - name: Checkout Repository
+      uses: actions/checkout@v3
 
-      # 2. Setup Flutter (v3.13+)
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.13.8'  # Flutter 4+ compatible
-          channel: stable
+    # 2. Setup Flutter
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: '3.35.4'
+        channel: stable
 
-      # 3. Get dependencies
-      - name: Flutter Pub Get
-        run: flutter pub get
+    # 3. Get dependencies
+    - name: Flutter Pub Get
+      run: flutter pub get
 
-      # 4. Always recreate android & ios folders
-      - name: Recreate Android & iOS folders
-        run: |
-          rm -rf android ios
-          flutter create .
+    # 4. Recreate Android folder (fresh)
+    - name: Recreate Android Folder
+      run: |
+        rm -rf android
+        mkdir -p android
+        echo "Android folder recreated."
 
-      # 5. Replace default Flutter logo
-      - name: Replace Flutter Logo
-        run: |
-          LOGO_PATH="assets/logo.png"
-          if [ -f "$LOGO_PATH" ]; then
-            echo "Custom logo exists: $LOGO_PATH"
-          else
-            mkdir -p assets
-            echo "Place your custom logo at $LOGO_PATH"
-          fi
+    # 5. Replace Android logo
+    - name: Replace Android Logo
+      run: |
+        LOGO_PATH="assets/logo.png"
+        if [ -f "$LOGO_PATH" ]; then
+          echo "Replacing Android logo..."
+          mkdir -p android/app/src/main/res/mipmap-xxxhdpi
+          cp "$LOGO_PATH" android/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png
+        else
+          echo "assets/logo.png not found!"
+        fi
 
-      # 6. Flutter clean
-      - name: Flutter Clean
-        run: flutter clean
+    # 6. Clean
+    - name: Flutter Clean
+      run: flutter clean
 
-      # 7. Build Android APK & AAB
-      - name: Build Android
-        run: |
-          flutter build apk --release --no-tree-shake-icons
-          flutter build appbundle --release
+    # 7. Build APK
+    - name: Build APK
+      run: flutter build apk --release --no-tree-shake-icons
 
-      
-      
-      # 11. Upload all artifacts
-      - name: Upload Build Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: flutter-build
-          path: build_artifacts/
+    # 8. Copy APK to artifacts
+    - name: Android Artifact Folder
+      run: mkdir -p build_artifacts/android
+    - name: Copy APK
+      run: cp build/app/outputs/flutter-apk/app-release.apk build_artifacts/android/
+
+    # 9. Upload artifact
+    - name: Upload APK Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: android-apk
+        path: build_artifacts/android/app-release.apk
