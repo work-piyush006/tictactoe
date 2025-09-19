@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:audioplayers/audioplayers.dart';
 
 void main() {
   runApp(MyApp());
@@ -25,13 +26,26 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+  AudioPlayer? bgmPlayer;
+
   @override
   void initState() {
     super.initState();
+    bgmPlayer = AudioPlayer();
+    bgmPlayer!.setReleaseMode(ReleaseMode.loop);
+    bgmPlayer!.play(AssetSource("assets/bgm.mp3"));
+
     Future.delayed(Duration(seconds: 2), () {
       Navigator.pushReplacement(
           context, MaterialPageRoute(builder: (_) => HomeScreen()));
     });
+  }
+
+  @override
+  void dispose() {
+    bgmPlayer?.stop();
+    bgmPlayer?.dispose();
+    super.dispose();
   }
 
   @override
@@ -154,30 +168,6 @@ class HomeScreen extends StatelessWidget {
                   ),
                   child: Text("👬 Play with Friends"),
                 ),
-                SizedBox(height: 20),
-                ElevatedButton.icon(
-                  onPressed: () {
-                    showDialog(
-                        context: context,
-                        builder: (_) => AlertDialog(
-                              title: Text("Arena Coming Soon 🔐"),
-                              content: Text(
-                                  "This mode will be available in future updates."),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context),
-                                  child: Text("OK"),
-                                )
-                              ],
-                            ));
-                  },
-                  style: ElevatedButton.styleFrom(
-                    minimumSize: Size(220, 50),
-                    backgroundColor: Colors.grey,
-                  ),
-                  icon: Icon(Icons.lock),
-                  label: Text("🔐 Arena (SOON)"),
-                ),
               ],
             ),
           ),
@@ -264,7 +254,6 @@ class DifficultyDialog extends StatelessWidget {
           difficultyButton(context, "Medium"),
           difficultyButton(context, "Hard"),
           difficultyButton(context, "Expert"),
-          difficultyButton(context, "Super Expert"), // 👈 New Added
         ],
       ),
     );
@@ -305,6 +294,12 @@ class _GameScreenState extends State<GameScreen> {
   List<String> board = List.filled(9, "");
   String currentPlayer = "";
   Random random = Random();
+  AudioPlayer tapPlayer = AudioPlayer();
+  AudioPlayer celebrationPlayer = AudioPlayer();
+
+  int scoreX = 0;
+  int scoreO = 0;
+  int draws = 0;
 
   @override
   void initState() {
@@ -315,17 +310,24 @@ class _GameScreenState extends State<GameScreen> {
     }
   }
 
+  void playTapSound() => tapPlayer.play(AssetSource("assets/tap.mp3"));
+  void playCelebration() => celebrationPlayer.play(AssetSource("assets/celebration.mp3"));
+
   void makeMove(int index) {
     if (board[index] != "") return;
+    playTapSound();
 
     setState(() {
       board[index] = currentPlayer;
     });
 
     if (_checkWinner(board, currentPlayer)) {
+      playCelebration();
+      if (currentPlayer == "X") scoreX++; else scoreO++;
       showWinnerDialog("$currentPlayer Wins!");
       return;
     } else if (!board.contains("")) {
+      draws++;
       showWinnerDialog("Draw 🤝");
       return;
     }
@@ -348,199 +350,91 @@ class _GameScreenState extends State<GameScreen> {
   int getComputerMove() {
     List<int> empty = [];
     for (int i = 0; i < 9; i++) if (board[i] == "") empty.add(i);
-
-    String comp = currentPlayer;
-    String human = widget.playerSymbol;
-
-    switch (widget.difficulty) {
-      case "Easy":
-        return empty[random.nextInt(empty.length)];
-
-      case "Medium":
-        // block human winning move
-        for (int i in empty) {
-          board[i] = human;
-          if (_checkWinner(board, human)) {
-            board[i] = "";
-            return i;
-          }
-          board[i] = "";
-        }
-        return empty[random.nextInt(empty.length)];
-
-      case "Hard":
-        // win if possible
-        for (int i in empty) {
-          board[i] = comp;
-          if (_checkWinner(board, comp)) {
-            board[i] = "";
-            return i;
-          }
-          board[i] = "";
-        }
-        // block human
-        for (int i in empty) {
-          board[i] = human;
-          if (_checkWinner(board, human)) {
-            board[i] = "";
-            return i;
-          }
-          board[i] = "";
-        }
-        return empty[random.nextInt(empty.length)];
-
-      case "Expert":
-        int bestScore = -1000;
-        int bestMove = empty[0];
-        for (int i in empty) {
-          board[i] = comp;
-          int score = minimax(board, 0, false, comp, human);
-          board[i] = "";
-          if (score > bestScore) {
-            bestScore = score;
-            bestMove = i;
-          }
-        }
-        return bestMove;
-
-      case "Super Expert":
-        if (random.nextInt(100) == 0) {
-          // 1% random
-          return empty[random.nextInt(empty.length)];
-        } else {
-          int bestScore = -1000;
-          int bestMove = empty[0];
-          for (int i in empty) {
-            board[i] = comp;
-            int score = minimax(board, 0, false, comp, human);
-            board[i] = "";
-            if (score > bestScore) {
-              bestScore = score;
-              bestMove = i;
-            }
-          }
-          return bestMove;
-        }
-
-      default:
-        return empty[random.nextInt(empty.length)];
-    }
-  }
-
-  int minimax(List<String> b, int depth, bool isMax, String ai, String human) {
-    if (_checkWinner(b, ai)) return 10 - depth; // AI wins
-    if (_checkWinner(b, human)) return depth - 10; // Human wins
-    if (!b.contains("")) return 0; // Draw
-
-    int bestScore = isMax ? -1000 : 1000;
-
-    for (int i = 0; i < 9; i++) {
-      if (b[i] == "") {
-        b[i] = isMax ? ai : human;
-        int score = minimax(b, depth + 1, !isMax, ai, human);
-        b[i] = "";
-        if (isMax) {
-          bestScore = max(score, bestScore);
-        } else {
-          bestScore = min(score, bestScore);
-        }
-      }
-    }
-    return bestScore;
+    return empty[random.nextInt(empty.length)];
   }
 
   bool _checkWinner(List<String> b, String player) {
     List<List<int>> wins = [
-      [0, 1, 2], [3, 4, 5], [6, 7, 8],
-      [0, 3, 6], [1, 4, 7], [2, 5, 8],
-      [0, 4, 8], [2, 4, 6]
+      [0,1,2],[3,4,5],[6,7,8],
+      [0,3,6],[1,4,7],[2,5,8],
+      [0,4,8],[2,4,6]
     ];
     for (var line in wins) {
-      if (b[line[0]] == player &&
-          b[line[1]] == player &&
-          b[line[2]] == player) {
-        return true;
-      }
+      if (b[line[0]]==player && b[line[1]]==player && b[line[2]]==player) return true;
     }
     return false;
   }
 
-  void showWinnerDialog(String title) {
+  void showWinnerDialog(String title){
     showDialog(
-        context: context,
-        builder: (_) => AlertDialog(
-              title: Text(title),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    setState(() {
-                      board = List.filled(9, "");
-                      currentPlayer = "X";
-                      if (widget.vsComputer && widget.playerSymbol != "X") {
-                        Future.delayed(Duration(milliseconds: 500),
-                            () => computerMove());
-                      }
-                    });
-                    Navigator.pop(context);
-                  },
-                  child: Text("Replay"),
-                ),
-                TextButton(
-                  onPressed: () {
-                    Navigator.pushReplacement(
-                        context, MaterialPageRoute(builder: (_) => HomeScreen()));
-                  },
-                  child: Text("Home"),
-                ),
-              ],
-            ));
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(title),
+        content: Text("Scoreboard:\nX: $scoreX | O: $scoreO | Draws: $draws"),
+        actions: [
+          TextButton(
+            onPressed: (){
+              setState((){
+                board = List.filled(9,"");
+                currentPlayer = "X";
+                if(widget.vsComputer && widget.playerSymbol!="X"){
+                  Future.delayed(Duration(milliseconds:500), ()=>computerMove());
+                }
+              });
+              Navigator.pop(context);
+            },
+            child: Text("Replay"),
+          ),
+          TextButton(
+            onPressed: (){
+              Navigator.pushReplacement(context, MaterialPageRoute(builder: (_)=>HomeScreen()));
+            },
+            child: Text("Home"),
+          )
+        ],
+      )
+    );
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context){
     return Scaffold(
       backgroundColor: Colors.deepPurple.shade800,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              widget.vsComputer
-                  ? "Your Turn: $currentPlayer"
-                  : "Player: $currentPlayer",
-              style: TextStyle(color: Colors.white, fontSize: 24),
-            ),
-            SizedBox(height: 20),
+          children:[
+            Text(widget.vsComputer?"Your Turn: $currentPlayer":"Player: $currentPlayer",
+              style: TextStyle(color: Colors.white, fontSize: 24)),
+            SizedBox(height:10),
+            Text("Scoreboard: X:$scoreX | O:$scoreO | Draws:$draws",
+              style: TextStyle(color: Colors.yellowAccent, fontSize:18)),
+            SizedBox(height:20),
             Container(
-              width: 300,
-              height: 300,
+              width:300,
+              height:300,
               child: GridView.builder(
-                  itemCount: 9,
-                  gridDelegate:
-                      SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3),
-                  itemBuilder: (context, index) {
-                    return GestureDetector(
-                      onTap: () => makeMove(index),
-                      child: Container(
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.white70),
-                        ),
-                        child: Center(
-                          child: Text(
-                            board[index],
-                            style: TextStyle(
-                                color: board[index] == "X"
-                                    ? Colors.redAccent
-                                    : Colors.blueAccent,
-                                fontSize: 48,
-                                fontWeight: FontWeight.bold),
+                itemCount:9,
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount:3),
+                itemBuilder: (context,index){
+                  return GestureDetector(
+                    onTap: ()=>makeMove(index),
+                    child: Container(
+                      decoration: BoxDecoration(border: Border.all(color: Colors.white70)),
+                      child: Center(
+                        child: Text(board[index],
+                          style: TextStyle(
+                            color: board[index]=="X"?Colors.redAccent:Colors.blueAccent,
+                            fontSize:48,fontWeight: FontWeight.bold
                           ),
                         ),
                       ),
-                    );
-                  }),
+                    ),
+                  );
+                }
+              ),
             )
-          ],
+          ]
         ),
       ),
     );
