@@ -372,10 +372,8 @@ class _GameScreenState extends State<GameScreen> {
 
     if (_checkWinner(board, currentPlayer)) {
       playCelebration();
-      if (currentPlayer == "X")
-        scoreX++;
-      else
-        scoreO++;
+      if (currentPlayer == "X") scoreX++;
+      else scoreO++;
       showWinnerDialog("$currentPlayer Wins!");
       return;
     } else if (!board.contains("")) {
@@ -519,40 +517,36 @@ class _GameScreenState extends State<GameScreen> {
         backgroundColor: Colors.deepPurple,
         centerTitle: true,
       ),
-      body: Center(
-        child: Container(
-          padding: EdgeInsets.all(10),
-          child: GridView.builder(
-            shrinkWrap: true,
-            gridDelegate:
-                SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3),
-            itemCount: 9,
-            itemBuilder: (context, index) {
-              return GestureDetector(
-                onTap: () {
-                  makeMove(index);
-                },
-                child: Container(
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.white),
-                  ),
-                  child: Center(
-                    child: Text(
-                      board[index],
-                      style: TextStyle(
-                        fontSize: 64,
-                        color: board[index] == "X"
-                            ? Colors.redAccent
-                            : Colors.blueAccent,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
+      body: GridView.builder(
+        padding: EdgeInsets.all(10),
+        shrinkWrap: true,
+        gridDelegate:
+            SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3),
+        itemCount: 9,
+        itemBuilder: (context, index) {
+          return GestureDetector(
+            onTap: () {
+              makeMove(index);
+            },
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.white),
+              ),
+              child: Center(
+                child: Text(
+                  board[index],
+                  style: TextStyle(
+                    fontSize: 64,
+                    color: board[index] == "X"
+                        ? Colors.redAccent
+                        : Colors.blueAccent,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-              );
-            },
-          ),
-        ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
