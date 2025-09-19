@@ -22,5 +22,5 @@ flutter:
   assets:
     - assets/logo.png
     - assets/bgm.mp3
-    - assets/celebration.mp3
-    - assets/tap.mp3
+    - assets/Celebration.mp3
+    - assets/Tap.mp3
