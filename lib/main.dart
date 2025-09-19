@@ -27,7 +27,7 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
-  AudioPlayer? bgmPlayer;
+  late AudioPlayer bgmPlayer;
   late AnimationController _controller;
   late Animation<double> _animation;
   List<Offset> particles = [];
@@ -39,17 +39,20 @@ class _SplashScreenState extends State<SplashScreen>
 
     // Background music
     bgmPlayer = AudioPlayer();
-    bgmPlayer!.setReleaseMode(ReleaseMode.loop);
-    bgmPlayer!.play(AssetSource("assets/bgm.mp3"));
+    bgmPlayer.setReleaseMode(ReleaseMode.loop);
+    bgmPlayer.play(AssetSource("bgm.mp3"));
 
     // Logo animation
     _controller =
         AnimationController(vsync: this, duration: Duration(seconds: 2));
-    _animation = Tween<double>(begin: 0.8, end: 1.2).animate(
-        CurvedAnimation(parent: _controller, curve: Curves.easeInOut))
-      ..addListener(() {
-        setState(() {});
-      });
+    _animation =
+        Tween<double>(begin: 0.8, end: 1.2).animate(CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeInOut,
+    ))
+          ..addListener(() {
+            setState(() {});
+          });
     _controller.repeat(reverse: true);
 
     // Floating particles
@@ -59,15 +62,17 @@ class _SplashScreenState extends State<SplashScreen>
 
     // Navigate to HomeScreen after delay
     Future.delayed(Duration(seconds: 3), () {
-      Navigator.pushReplacement(
-          context, MaterialPageRoute(builder: (_) => HomeScreen()));
+      if (mounted) {
+        Navigator.pushReplacement(
+            context, MaterialPageRoute(builder: (_) => HomeScreen()));
+      }
     });
   }
 
   @override
   void dispose() {
-    bgmPlayer?.stop();
-    bgmPlayer?.dispose();
+    bgmPlayer.stop();
+    bgmPlayer.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -86,7 +91,12 @@ class _SplashScreenState extends State<SplashScreen>
               ),
             ),
           ),
-          CustomPaint(painter: FloatingXO(particles: particles)),
+          AnimatedBuilder(
+            animation: _controller,
+            builder: (_, __) {
+              return CustomPaint(painter: FloatingXO(particles: particles));
+            },
+          ),
           Center(
             child: Transform.scale(
               scale: _animation.value,
@@ -130,13 +140,14 @@ class FloatingXO extends CustomPainter {
     for (var pos in particles) {
       TextPainter tp = TextPainter(
         text: TextSpan(
-            text: random.nextBool() ? "X" : "O",
-            style: TextStyle(
-                fontSize: 20,
-                color: random.nextBool()
-                    ? Colors.red.shade200.withOpacity(0.7)
-                    : Colors.blue.shade200.withOpacity(0.7),
-                fontWeight: FontWeight.bold)),
+          text: random.nextBool() ? "X" : "O",
+          style: TextStyle(
+              fontSize: 20,
+              color: random.nextBool()
+                  ? Colors.red.shade200.withOpacity(0.7)
+                  : Colors.blue.shade200.withOpacity(0.7),
+              fontWeight: FontWeight.bold),
+        ),
         textDirection: TextDirection.ltr,
       );
       tp.layout();
@@ -145,7 +156,7 @@ class FloatingXO extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
 
 // ================= HOME SCREEN =================
@@ -342,8 +353,8 @@ class _GameScreenState extends State<GameScreen> {
   List<String> board = List.filled(9, "");
   String currentPlayer = "";
   Random random = Random();
-  AudioPlayer tapPlayer = AudioPlayer();
-  AudioPlayer celebrationPlayer = AudioPlayer();
+  final AudioPlayer tapPlayer = AudioPlayer();
+  final AudioPlayer celebrationPlayer = AudioPlayer();
 
   int scoreX = 0;
   int scoreO = 0;
@@ -358,22 +369,23 @@ class _GameScreenState extends State<GameScreen> {
     }
   }
 
-  void playTapSound() => tapPlayer.play(AssetSource("assets/Tap.mp3"));
-  void playCelebration() =>
-      celebrationPlayer.play(AssetSource("assets/Celebration.mp3"));
+  Future<void> playTapSound() async =>
+      await tapPlayer.play(AssetSource("Tap.mp3"));
 
-  void makeMove(int index) {
+  Future<void> playCelebration() async =>
+      await celebrationPlayer.play(AssetSource("Celebration.mp3"));
+
+  void makeMove(int index) async {
     if (board[index] != "") return;
-    playTapSound();
+    await playTapSound();
 
     setState(() {
       board[index] = currentPlayer;
     });
 
     if (_checkWinner(board, currentPlayer)) {
-      playCelebration();
-      if (currentPlayer == "X") scoreX++;
-      else scoreO++;
+      await playCelebration();
+      currentPlayer == "X" ? scoreX++ : scoreO++;
       showWinnerDialog("$currentPlayer Wins!");
       return;
     } else if (!board.contains("")) {
