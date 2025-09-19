@@ -1,30 +1,27 @@
-name: tic_tac_toe_game
-description: A Tic Tac Toe Flutter Game
-publish_to: 'none' # private project
+name: tic_tac_toe
+description: A Tic Tac Toe game with AI, multiplayer, sounds, and scoreboard.
 
+# The following defines the version and build number for your application.
 version: 1.0.0+1
 
 environment:
-  sdk: ">=3.1.0 <4.0.0"
+  sdk: ">=3.0.0 <4.0.0"
 
 dependencies:
   flutter:
     sdk: flutter
-  cupertino_icons: ^1.0.5
+  audioplayers: ^3.1.0  # Audio support for bgm, tap, celebration sounds
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^2.0.1
+  flutter_lints: ^2.0.0
 
 flutter:
   uses-material-design: true
 
   assets:
     - assets/logo.png
-
-  # Fonts (optional, remove if not used)
-  # fonts:
-  #   - family: Roboto
-  #     fonts:
-  #       - asset: assets/fonts/Roboto-Regular.ttf
+    - assets/bgm.mp3
+    - assets/celebration.mp3
+    - assets/tap.mp3
