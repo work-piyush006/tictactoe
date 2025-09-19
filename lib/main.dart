@@ -55,8 +55,7 @@ class _SplashScreenState extends State<SplashScreen>
     _controller.repeat(reverse: true);
 
     for (int i = 0; i < 50; i++) {
-      particles.add(
-          Offset(random.nextDouble() * 400, random.nextDouble() * 800));
+      particles.add(Offset(random.nextDouble() * 400, random.nextDouble() * 800));
     }
 
     Future.delayed(Duration(seconds: 3), () {
@@ -76,7 +75,6 @@ class _SplashScreenState extends State<SplashScreen>
     super.dispose();
   }
 
-  // App lifecycle events
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused) {
@@ -156,6 +154,19 @@ class FloatingXO extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
 
+// ================= GRADIENT BACKGROUND =================
+Widget gradientBg() {
+  return Container(
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        colors: [Colors.deepPurple, Colors.purpleAccent],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
+    ),
+  );
+}
+
 // ================= HOME SCREEN =================
 class HomeScreen extends StatefulWidget {
   final AudioPlayer bgmPlayer;
@@ -165,7 +176,8 @@ class HomeScreen extends StatefulWidget {
   _HomeScreenState createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin, WidgetsBindingObserver {
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late AnimationController _particleController;
   List<Offset> particles = [];
   Random random = Random();
@@ -181,9 +193,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       duration: Duration(seconds: 2),
     )..repeat(reverse: true);
 
-    // generate particle positions
     for (int i = 0; i < 50; i++) {
-      particles.add(Offset(random.nextDouble() * MediaQuery.of(context).size.width,
+      particles.add(Offset(
+          random.nextDouble() * MediaQuery.of(context).size.width,
           random.nextDouble() * MediaQuery.of(context).size.height));
     }
 
@@ -209,8 +221,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   void toggleBgm() {
     setState(() {
       isBgmOn = !isBgmOn;
-      if (isBgmOn) widget.bgmPlayer.resume();
-      else widget.bgmPlayer.pause();
+      if (isBgmOn)
+        widget.bgmPlayer.resume();
+      else
+        widget.bgmPlayer.pause();
     });
   }
 
@@ -219,7 +233,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => SymbolSelectionScreen(vsComputer: vsComputer, bgmPlayer: widget.bgmPlayer),
+        builder: (_) =>
+            SymbolSelectionScreen(vsComputer: vsComputer, bgmPlayer: widget.bgmPlayer),
       ),
     ).then((_) {
       if (isBgmOn) widget.bgmPlayer.resume();
@@ -235,7 +250,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
           Positioned.fill(
             child: AnimatedBuilder(
               animation: _particleController,
-              builder: (_, __) => CustomPaint(painter: FloatingXO(particles: particles)),
+              builder: (_, __) =>
+                  CustomPaint(painter: FloatingXO(particles: particles)),
             ),
           ),
           Center(
@@ -256,8 +272,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   style: ElevatedButton.styleFrom(
                       minimumSize: Size(220, 50),
                       backgroundColor: Colors.greenAccent.shade700,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                  child: Text("Play vs Computer", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12))),
+                  child: Text("Play vs Computer",
+                      style:
+                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                 ),
                 SizedBox(height: 20),
                 ElevatedButton(
@@ -265,8 +284,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   style: ElevatedButton.styleFrom(
                       minimumSize: Size(220, 50),
                       backgroundColor: Colors.blueAccent.shade700,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
-                  child: Text("Play with Friends", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12))),
+                  child: Text("Play with Friends",
+                      style:
+                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
@@ -277,7 +299,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             child: Row(
               children: [
                 IconButton(
-                  icon: Icon(isBgmOn ? Icons.volume_up : Icons.volume_off, color: Colors.white),
+                  icon: Icon(
+                      isBgmOn ? Icons.volume_up : Icons.volume_off,
+                      color: Colors.white),
                   onPressed: toggleBgm,
                 ),
                 SizedBox(width: 10),
@@ -288,11 +312,15 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                       context: context,
                       builder: (_) => AlertDialog(
                         backgroundColor: Colors.deepPurple.shade800,
-                        title: Text("About", style: TextStyle(color: Colors.white)),
-                        content: Text("Made by G A PRODUCTION\nVersion 1.0.0\nTry to Win Against Our SuperExpert AI",
+                        title: Text("About",
+                            style: TextStyle(color: Colors.white)),
+                        content: Text(
+                            "Made by G A PRODUCTION\nVersion 1.0.0\nTry to Win Against Our SuperExpert AI",
                             style: TextStyle(color: Colors.white70)),
                         actions: [
-                          TextButton(onPressed: () => Navigator.pop(context), child: Text("Close"))
+                          TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: Text("Close"))
                         ],
                       ),
                     );
@@ -307,8 +335,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
   }
 }
 
-
-// ================= SYMBOL SELECTION =================
+// ================= SYMBOL SELECTION SCREEN =================
 class SymbolSelectionScreen extends StatelessWidget {
   final bool vsComputer;
   final AudioPlayer bgmPlayer;
@@ -329,7 +356,6 @@ class SymbolSelectionScreen extends StatelessWidget {
           builder: (_) => GameScreen(
             vsComputer: false,
             playerSymbol: playerSymbol,
-            difficulty: "Easy",
           ),
         ),
       );
@@ -347,7 +373,8 @@ class SymbolSelectionScreen extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text("Choose Your Symbol",
-                    style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
+                    style:
+                        TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
                 SizedBox(height: 30),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -357,7 +384,8 @@ class SymbolSelectionScreen extends StatelessWidget {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.redAccent,
                         minimumSize: Size(100, 100),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20)),
                       ),
                       child: Text("X", style: TextStyle(fontSize: 36)),
                     ),
@@ -367,7 +395,8 @@ class SymbolSelectionScreen extends StatelessWidget {
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.blueAccent,
                         minimumSize: Size(100, 100),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20)),
                       ),
                       child: Text("O", style: TextStyle(fontSize: 36)),
                     ),
@@ -392,7 +421,8 @@ class DifficultyDialog extends StatelessWidget {
   Widget build(BuildContext context) {
     return AlertDialog(
       backgroundColor: Colors.deepPurple.shade800,
-      title: Text("Select Difficulty Level", style: TextStyle(color: Colors.white)),
+      title: Text("Select Difficulty Level",
+          style: TextStyle(color: Colors.white)),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: ["Easy", "Medium", "Hard", "Expert", "Super Expert"]
@@ -402,7 +432,8 @@ class DifficultyDialog extends StatelessWidget {
                   child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.purpleAccent.shade700,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12)),
                     ),
                     onPressed: () {
                       bgmPlayer.pause();
@@ -426,12 +457,13 @@ class DifficultyDialog extends StatelessWidget {
   }
 }
 
-// ================= ENHANCED GAME SCREEN =================
+// ================= GAME SCREEN =================
 class GameScreen extends StatefulWidget {
   final bool vsComputer;
   final String playerSymbol;
+  final String? difficulty;
 
-  GameScreen({required this.vsComputer, required this.playerSymbol});
+  GameScreen({required this.vsComputer, required this.playerSymbol, this.difficulty});
 
   @override
   _GameScreenState createState() => _GameScreenState();
@@ -447,6 +479,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
   final AudioPlayer tapPlayer = AudioPlayer();
   final AudioPlayer celebratePlayer = AudioPlayer();
+  Random random = Random();
 
   @override
   void initState() {
@@ -455,7 +488,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     currentTurn = "X";
     opponentSymbol = widget.playerSymbol == "X" ? "O" : "X";
 
-    // If player is O, AI starts
     if (widget.vsComputer && widget.playerSymbol == "O") {
       Future.delayed(Duration(milliseconds: 300), () => computerMove());
     }
@@ -495,9 +527,31 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     currentTurn = currentTurn == "X" ? "O" : "X";
   }
 
-  // ================= SUPER EXPERT AI (MINIMAX) =================
+  // ================= AI LOGIC =================
   void computerMove() {
-    int move = findBestMove();
+    int move;
+    String diff = widget.difficulty ?? "Easy";
+
+    switch (diff) {
+      case "Easy":
+        move = randomMove();
+        break;
+      case "Medium":
+        move = mediumMove();
+        break;
+      case "Hard":
+        move = minimaxMove(depthLimit: 2, randomness: 0.2);
+        break;
+      case "Expert":
+        move = minimaxMove(depthLimit: 9);
+        break;
+      case "Super Expert":
+        move = minimaxMove(depthLimit: 9, guaranteedWin: true);
+        break;
+      default:
+        move = randomMove();
+    }
+
     setState(() {
       board[move] = currentTurn;
       playTapSound();
@@ -506,26 +560,64 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     });
   }
 
-  int findBestMove() {
-    int bestScore = -1000;
-    int move = 0;
+  int randomMove() {
+    List<int> empty = [];
+    for (int i = 0; i < 9; i++) if (board[i] == "") empty.add(i);
+    return empty[random.nextInt(empty.length)];
+  }
+
+  int mediumMove() {
+    // Win if possible
     for (int i = 0; i < 9; i++) {
       if (board[i] == "") {
         board[i] = opponentSymbol;
-        int score = minimax(board, 0, false);
-        board[i] = "";
-        if (score > bestScore) {
-          bestScore = score;
-          move = i;
+        if (checkWinnerReturn() == opponentSymbol) {
+          board[i] = "";
+          return i;
         }
+        board[i] = "";
       }
     }
-    return move;
+    // Block player
+    for (int i = 0; i < 9; i++) {
+      if (board[i] == "") {
+        board[i] = widget.playerSymbol;
+        if (checkWinnerReturn() == widget.playerSymbol) {
+          board[i] = "";
+          return i;
+        }
+        board[i] = "";
+      }
+    }
+    // Random
+    return randomMove();
   }
 
-  int minimax(List<String> b, int depth, bool isMaximizing) {
+  int minimaxMove({int depthLimit = 9, double randomness = 0.0, bool guaranteedWin = false}) {
+    List<int> empty = [];
+    for (int i = 0; i < 9; i++) if (board[i] == "") empty.add(i);
+    if (empty.isEmpty) return 0;
+
+    if (randomness > 0 && random.nextDouble() < randomness) return randomMove();
+
+    int bestScore = -1000;
+    int bestMove = empty[0];
+    for (int i in empty) {
+      board[i] = opponentSymbol;
+      int score = minimax(board, 0, false, depthLimit);
+      board[i] = "";
+      if (score > bestScore) {
+        bestScore = score;
+        bestMove = i;
+      }
+    }
+
+    return bestMove;
+  }
+
+  int minimax(List<String> b, int depth, bool isMaximizing, int depthLimit) {
     String winner = checkWinnerReturn();
-    if (winner != "") {
+    if (winner != "" || depth >= depthLimit) {
       if (winner == opponentSymbol) return 10 - depth;
       if (winner == widget.playerSymbol) return depth - 10;
       return 0;
@@ -536,7 +628,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       for (int i = 0; i < 9; i++) {
         if (b[i] == "") {
           b[i] = opponentSymbol;
-          bestScore = max(bestScore, minimax(b, depth + 1, false));
+          bestScore = max(bestScore, minimax(b, depth + 1, false, depthLimit));
           b[i] = "";
         }
       }
@@ -546,7 +638,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       for (int i = 0; i < 9; i++) {
         if (b[i] == "") {
           b[i] = widget.playerSymbol;
-          bestScore = min(bestScore, minimax(b, depth + 1, true));
+          bestScore = min(bestScore, minimax(b, depth + 1, true, depthLimit));
           b[i] = "";
         }
       }
@@ -554,8 +646,50 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     }
   }
 
-  // ================= WINNER CHECK =================
+// ================= WINNER CHECK =================
   String checkWinnerReturn() {
+    List<List<int>> wins = [
+      [0,1,2],[3,4,5],[6,7,8], // rows
+      [0,3,6],[1,4,7],[2,5,8], // columns
+      [0,4,8],[2,4,6]           // diagonals
+    ];
+
+    for (var line in wins) {
+      if (board[line[0]] != "" &&
+          board[line[0]] == board[line[1]] &&
+          board[line[1]] == board[line[2]]) {
+        return board[line[0]];
+      }
+    }
+
+    if (!board.contains("")) return "Draw";
+
+    return "";
+  }
+
+  void checkWinner() {
+    String winner = checkWinnerReturn();
+
+    if (winner != "") {
+      setState(() {
+        gameOver = true;
+        if (winner == "Draw") {
+          resultMessage = "It's a Draw!";
+        } else {
+          resultMessage = winner == widget.playerSymbol
+              ? "You Won! 🎉"
+              : widget.vsComputer
+                  ? "Computer Wins! 💻"
+                  : "$winner Wins!";
+          if (winner != "Draw") playCelebrateSound();
+        }
+        winningLine = getWinningLine();
+      });
+      Future.delayed(Duration(milliseconds: 500), () => showEndDialog());
+    }
+  }
+
+  List<int> getWinningLine() {
     List<List<int>> wins = [
       [0,1,2],[3,4,5],[6,7,8],
       [0,3,6],[1,4,7],[2,5,8],
@@ -566,107 +700,90 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       if (board[line[0]] != "" &&
           board[line[0]] == board[line[1]] &&
           board[line[1]] == board[line[2]]) {
-        winningLine = line;
-        return board[line[0]];
+        return line;
       }
     }
-
-    if (!board.contains("")) return "Draw";
-    return "";
+    return [];
   }
 
-  void checkWinner() {
-    String winner = checkWinnerReturn();
-    if (winner != "") {
-      gameOver = true;
-      resultMessage = winner == "Draw" ? "It's a Draw!" : "$winner Wins!";
-      playCelebrateSound();
-      showEndDialog(resultMessage);
-    }
-  }
-
-  void showEndDialog(String message) {
+  void showEndDialog() {
     showDialog(
+      barrierDismissible: false,
       context: context,
       builder: (_) => AlertDialog(
         backgroundColor: Colors.deepPurple.shade800,
-        title: Text(message, style: TextStyle(color: Colors.white, fontSize: 20)),
+        title: Text("Game Over", style: TextStyle(color: Colors.white)),
+        content: Text(resultMessage, style: TextStyle(color: Colors.white70)),
         actions: [
-          TextButton(onPressed: () { Navigator.pop(context); resetBoard(); }, child: Text("Play Again")),
-          TextButton(onPressed: () { Navigator.pop(context); Navigator.pop(context); }, child: Text("Home")),
+          TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                setState(() {
+                  board = List.filled(9, "");
+                  gameOver = false;
+                  currentTurn = "X";
+                  winningLine = [];
+                  if (widget.vsComputer && widget.playerSymbol == "O") {
+                    Future.delayed(Duration(milliseconds: 300),
+                        () => computerMove());
+                  }
+                });
+              },
+              child: Text("Play Again")),
+          TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.pop(context);
+              },
+              child: Text("Exit"))
         ],
       ),
     );
   }
 
-  void resetBoard() {
-    setState(() {
-      board = List.filled(9, "");
-      currentTurn = "X";
-      gameOver = false;
-      resultMessage = "";
-      winningLine = [];
-      if (widget.vsComputer && widget.playerSymbol == "O") {
-        Future.delayed(Duration(milliseconds: 300), () => computerMove());
-      }
-    });
+  Color getTileColor(int index) {
+    if (winningLine.contains(index)) return Colors.greenAccent.shade400;
+    return Colors.white;
   }
 
-  Widget buildCell(int index) {
-    bool isWinningCell = winningLine.contains(index);
-    return GestureDetector(
-      onTap: () => handleTap(index),
-      child: Container(
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.white70),
-          color: isWinningCell ? Colors.yellow.withOpacity(0.5) : Colors.transparent,
-        ),
-        child: Center(
-          child: Text(
-            board[index],
-            style: TextStyle(
-              fontSize: 48,
-              fontWeight: FontWeight.bold,
-              color: board[index] == "X" ? Colors.redAccent : Colors.blueAccent,
+  @override
+  Widget build(BuildContext context) {
+    double size = MediaQuery.of(context).size.width / 3 - 16;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text("Tic Tac Toe"),
+        backgroundColor: Colors.deepPurple,
+      ),
+      body: Container(
+        padding: EdgeInsets.all(8),
+        color: Colors.deepPurple.shade50,
+        child: GridView.builder(
+          itemCount: 9,
+          gridDelegate:
+              SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3),
+          itemBuilder: (_, index) => GestureDetector(
+            onTap: () => handleTap(index),
+            child: Container(
+              margin: EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                  color: getTileColor(index),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.deepPurple, width: 2)),
+              child: Center(
+                  child: Text(
+                board[index],
+                style: TextStyle(
+                    fontSize: 48,
+                    fontWeight: FontWeight.bold,
+                    color: board[index] == "X"
+                        ? Colors.red
+                        : Colors.blue),
+              )),
             ),
           ),
         ),
       ),
     );
   }
-
-  @override
-  Widget build(BuildContext context) {
-    double gridSize = MediaQuery.of(context).size.width * 0.8;
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.vsComputer ? "Vs Computer" : "2 Players"),
-        backgroundColor: Colors.deepPurple,
-      ),
-      body: Center(
-        child: Container(
-          width: gridSize,
-          height: gridSize,
-          child: GridView.builder(
-            physics: NeverScrollableScrollPhysics(),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3),
-            itemCount: 9,
-            itemBuilder: (_, index) => buildCell(index),
-          ),
-        ),
-      ),
-    );
-  }
-}
-// ================= GRADIENT BG =================
-Widget gradientBg() {
-  return Container(
-    decoration: BoxDecoration(
-      gradient: LinearGradient(
-        colors: [Colors.deepPurple.shade400, Colors.deepPurple.shade900],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      ),
-    ),
-  );
 }
