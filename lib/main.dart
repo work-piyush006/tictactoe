@@ -327,10 +327,12 @@ class GameScreen extends StatefulWidget {
   final bool vsComputer;
   final String playerSymbol;
   final String difficulty;
-  GameScreen(
-      {required this.vsComputer,
-      required this.playerSymbol,
-      required this.difficulty});
+
+  GameScreen({
+    required this.vsComputer,
+    required this.playerSymbol,
+    required this.difficulty,
+  });
 
   @override
   _GameScreenState createState() => _GameScreenState();
@@ -424,18 +426,21 @@ class _GameScreenState extends State<GameScreen> {
 
     String opponent = widget.playerSymbol;
 
+    // Win if possible
     for (int i in empty) {
       List<String> temp = List.from(board);
       temp[i] = currentPlayer;
       if (_checkWinner(temp, currentPlayer)) return i;
     }
 
+    // Block opponent
     for (int i in empty) {
       List<String> temp = List.from(board);
       temp[i] = opponent;
       if (_checkWinner(temp, opponent)) return i;
     }
 
+    // Smart move
     if (Random().nextDouble() < smartChance) {
       if (empty.contains(4)) return 4;
       List<int> corners = [0, 2, 6, 8];
@@ -464,44 +469,45 @@ class _GameScreenState extends State<GameScreen> {
       [2, 4, 6]
     ];
     for (var line in wins) {
-      if (b[line[0]] == player && b[line[1]] == player && b[line[2]] == player)
-        return true;
+      if (b[line[0]] == player &&
+          b[line[1]] == player &&
+          b[line[2]] == player) return true;
     }
     return false;
   }
 
   void showWinnerDialog(String title) {
     showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => AlertDialog(
-              title: Text(title),
-              content: Text(
-                  "Scoreboard:\nX: $scoreX | O: $scoreO | Draws: $draws"),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    setState(() {
-                      board = List.filled(9, "");
-                      currentPlayer = "X";
-                      if (widget.vsComputer && widget.playerSymbol != "X") {
-                        Future.delayed(
-                            Duration(milliseconds: 500), () => computerMove());
-                      }
-                    });
-                    Navigator.pop(context);
-                  },
-                  child: Text("Replay"),
-                ),
-                TextButton(
-                  onPressed: () {
-                    Navigator.pushReplacement(context,
-                        MaterialPageRoute(builder: (_) => HomeScreen()));
-                  },
-                  child: Text("Home"),
-                ),
-              ],
-            ));
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        title: Text(title),
+        content: Text("Scoreboard:\nX: $scoreX | O: $scoreO | Draws: $draws"),
+        actions: [
+          TextButton(
+            onPressed: () {
+              setState(() {
+                board = List.filled(9, "");
+                currentPlayer = "X";
+                if (widget.vsComputer && widget.playerSymbol != "X") {
+                  Future.delayed(
+                      Duration(milliseconds: 500), () => computerMove());
+                }
+              });
+              Navigator.pop(context);
+            },
+            child: Text("Replay"),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pushReplacement(context,
+                  MaterialPageRoute(builder: (_) => HomeScreen()));
+            },
+            child: Text("Home"),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -513,42 +519,40 @@ class _GameScreenState extends State<GameScreen> {
         backgroundColor: Colors.deepPurple,
         centerTitle: true,
       ),
-      body: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: EdgeInsets.all(10),
-            child: GridView.builder(
-              shrinkWrap: true,
-              gridDelegate:
-                  SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3),
-              itemCount: 9,
-              itemBuilder: (context, index) {
-                return GestureDetector(
-                  onTap: () {
-                    makeMove(index);
-                  },
-                  child: Container(
-                    decoration: BoxDecoration(
-                      border: Border.all(color: Colors.white),
-                    ),
-                    child: Center(
-                      child: Text(
-                        board[index],
-                        style: TextStyle(
-                            fontSize: 64,
-                            color: board[index] == "X"
-                                ? Colors.redAccent
-                                : Colors.blueAccent,
-                            fontWeight: FontWeight.bold),
+      body: Center(
+        child: Container(
+          padding: EdgeInsets.all(10),
+          child: GridView.builder(
+            shrinkWrap: true,
+            gridDelegate:
+                SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3),
+            itemCount: 9,
+            itemBuilder: (context, index) {
+              return GestureDetector(
+                onTap: () {
+                  makeMove(index);
+                },
+                child: Container(
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.white),
+                  ),
+                  child: Center(
+                    child: Text(
+                      board[index],
+                      style: TextStyle(
+                        fontSize: 64,
+                        color: board[index] == "X"
+                            ? Colors.redAccent
+                            : Colors.blueAccent,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
-                );
-              },
-            ),
+                ),
+              );
+            },
           ),
-        ],
+        ),
       ),
     );
   }
