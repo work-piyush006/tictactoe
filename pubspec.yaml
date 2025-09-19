@@ -1,6 +1,6 @@
 name: tic_tac_toe
-description: A Tic Tac Toe game with AI, multiplayer, sounds, and scoreboard.
-
+description: A Flutter Tic Tac Toe Game with Scoreboard and Sounds
+publish_to: 'none'
 version: 1.0.0+1
 
 environment:
@@ -9,7 +9,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  audioplayers: ^5.2.1  # Latest stable version compatible with Flutter 3+
+  audioplayers: ^5.2.1
 
 dev_dependencies:
   flutter_test:
