@@ -165,38 +165,51 @@ class HomeScreen extends StatefulWidget {
   _HomeScreenState createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen>
-    with SingleTickerProviderStateMixin {
+class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late AnimationController _controller;
-  late Animation<double> _animation;
   List<Offset> particles = [];
   Random random = Random();
-  int _selectedIndex = 0;
+  bool isBgmOn = true;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
 
-    _controller =
-        AnimationController(vsync: this, duration: Duration(seconds: 2));
-    _animation = Tween<double>(begin: 0.8, end: 1.2)
-        .animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut))
-          ..addListener(() {
-            setState(() {});
-          });
-    _controller.repeat(reverse: true);
+    _controller = AnimationController(vsync: this, duration: Duration(seconds: 2))
+      ..repeat(reverse: true);
 
     for (int i = 0; i < 40; i++) {
-      particles.add(
-          Offset(random.nextDouble() * 400, random.nextDouble() * 800));
+      particles.add(Offset(random.nextDouble() * 400, random.nextDouble() * 800));
     }
 
     widget.bgmPlayer.resume();
   }
 
-  void _onItemTapped(int index) {
+  @override
+  void dispose() {
+    _controller.dispose();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      widget.bgmPlayer.pause();
+    } else if (state == AppLifecycleState.resumed && isBgmOn) {
+      widget.bgmPlayer.resume();
+    }
+  }
+
+  void toggleBgm() {
     setState(() {
-      _selectedIndex = index;
+      isBgmOn = !isBgmOn;
+      if (isBgmOn) {
+        widget.bgmPlayer.resume();
+      } else {
+        widget.bgmPlayer.pause();
+      }
     });
   }
 
@@ -205,105 +218,90 @@ class _HomeScreenState extends State<HomeScreen>
     Navigator.push(
       context,
       MaterialPageRoute(
-          builder: (_) =>
-              SymbolSelectionScreen(vsComputer: vsComputer, bgmPlayer: widget.bgmPlayer)),
+        builder: (_) => SymbolSelectionScreen(vsComputer: vsComputer, bgmPlayer: widget.bgmPlayer),
+      ),
     ).then((_) {
-      widget.bgmPlayer.resume();
+      if (isBgmOn) widget.bgmPlayer.resume();
     });
   }
 
   @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  Widget _homeTab() {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Image.asset("assets/logo.png", width: 120, height: 120),
-        SizedBox(height: 10),
-        Text(
-          "T i c T a c T o e",
-          style: TextStyle(
-              color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold, letterSpacing: 4),
-        ),
-        SizedBox(height: 50),
-        ElevatedButton(
-          onPressed: () => navigateToGame(true),
-          style: ElevatedButton.styleFrom(
-            minimumSize: Size(220, 50),
-            backgroundColor: Colors.greenAccent.shade700,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-          child: Text("Play vs Computer", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-        ),
-        SizedBox(height: 20),
-        ElevatedButton(
-          onPressed: () => navigateToGame(false),
-          style: ElevatedButton.styleFrom(
-            minimumSize: Size(220, 50),
-            backgroundColor: Colors.blueAccent.shade700,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-          child: Text("Play with Friends", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-        ),
-      ],
-    );
-  }
-
-  Widget _aboutTab() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Image.asset("assets/logo.png", width: 100, height: 100),
-          SizedBox(height: 10),
-          Text("Made by G A PRODUCTION", style: TextStyle(color: Colors.white, fontSize: 16)),
-          SizedBox(height: 4),
-          Text("New Update will Come Soon", style: TextStyle(color: Colors.white70, fontSize: 14)),
-          SizedBox(height: 4),
-          Text("Multiplayer (online)", style: TextStyle(color: Colors.white70, fontSize: 14)),
-          SizedBox(height: 10),
-          Text("Version 1.0.0", style: TextStyle(color: Colors.white54, fontSize: 12)),
-          Text("Tips: Tap cells to play", style: TextStyle(color: Colors.white54, fontSize: 12)),
-        ],
-      ),
-    );
-  }
-
-  @override
   Widget build(BuildContext context) {
-    List<Widget> _tabs = [_homeTab(), _aboutTab()];
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.deepPurple,
-        centerTitle: true,
-        title: Text("Home"),
-      ),
       body: Stack(
         children: [
           gradientBg(),
           Positioned.fill(child: CustomPaint(painter: FloatingXO(particles: particles))),
-          _tabs[_selectedIndex],
-        ],
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: Colors.deepPurple,
-        selectedItemColor: Colors.white,
-        unselectedItemColor: Colors.white70,
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        items: [
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
-          BottomNavigationBarItem(icon: Icon(Icons.info), label: "About"),
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  "Choose Your Mode To Play 🎮",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                      color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
+                ),
+                SizedBox(height: 50),
+                ElevatedButton(
+                  onPressed: () => navigateToGame(true),
+                  style: ElevatedButton.styleFrom(
+                      minimumSize: Size(220, 50),
+                      backgroundColor: Colors.greenAccent.shade700,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                  child: Text("Play vs Computer",
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                ),
+                SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () => navigateToGame(false),
+                  style: ElevatedButton.styleFrom(
+                      minimumSize: Size(220, 50),
+                      backgroundColor: Colors.blueAccent.shade700,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                  child: Text("Play with Friends",
+                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+          ),
+          Positioned(
+            top: 40,
+            right: 20,
+            child: Row(
+              children: [
+                IconButton(
+                  icon: Icon(isBgmOn ? Icons.volume_up : Icons.volume_off, color: Colors.white),
+                  onPressed: toggleBgm,
+                ),
+                SizedBox(width: 10),
+                IconButton(
+                  icon: Icon(Icons.info_outline, color: Colors.white),
+                  onPressed: () {
+                    showDialog(
+                        context: context,
+                        builder: (_) => AlertDialog(
+                              backgroundColor: Colors.deepPurple.shade800,
+                              title: Text("About", style: TextStyle(color: Colors.white)),
+                              content: Text(
+                                  "Made by G A PRODUCTION\nVersion 1.0.0\nTips: Tap cells to play",
+                                  style: TextStyle(color: Colors.white70)),
+                              actions: [
+                                TextButton(
+                                    onPressed: () => Navigator.pop(context),
+                                    child: Text("Close"))
+                              ],
+                            ));
+                  },
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 }
-
 // ================= SYMBOL SELECTION =================
 class SymbolSelectionScreen extends StatelessWidget {
   final bool vsComputer;
@@ -437,7 +435,7 @@ class GameScreen extends StatefulWidget {
   _GameScreenState createState() => _GameScreenState();
 }
 
-class _GameScreenState extends State<GameScreen> {
+class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   late List<String> board;
   late String currentTurn;
   late String opponentSymbol;
@@ -452,9 +450,26 @@ class _GameScreenState extends State<GameScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     board = List.filled(9, "");
-    currentTurn = "X"; // always start with X
+    currentTurn = "X";
     opponentSymbol = widget.playerSymbol == "X" ? "O" : "X";
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    tapPlayer.dispose();
+    celebratePlayer.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      // App minimized, close game
+      Navigator.pop(context);
+    }
   }
 
   void playTapSound() async {
@@ -525,11 +540,6 @@ class _GameScreenState extends State<GameScreen> {
       return findWinningMove(currentTurn) ??
           findWinningMove(widget.playerSymbol) ??
           empty[Random().nextInt(empty.length)];
-    }
-    if (diff == "Expert" || diff == "Super Expert") {
-      return findWinningMove(currentTurn) ??
-          findWinningMove(widget.playerSymbol) ??
-          empty[0];
     }
     return empty[0];
   }
@@ -664,43 +674,48 @@ class _GameScreenState extends State<GameScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.vsComputer ? "Vs Computer" : "2 Players"),
-        backgroundColor: Colors.deepPurple,
-        actions: [
-          Padding(
-            padding: const EdgeInsets.all(12.0),
-            child: Center(
-              child: Text(
-                "${playerScore} : ${opponentScore}",
-                style: TextStyle(fontSize: 20, color: Colors.white),
+    return WillPopScope(
+      onWillPop: () async {
+        // close game on back button
+        return true;
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(widget.vsComputer ? "Vs Computer" : "2 Players"),
+          backgroundColor: Colors.deepPurple,
+          actions: [
+            Padding(
+              padding: const EdgeInsets.all(12.0),
+              child: Center(
+                child: Text(
+                  "${playerScore} : ${opponentScore}",
+                  style: TextStyle(fontSize: 20, color: Colors.white),
+                ),
               ),
             ),
-          ),
-        ],
-      ),
-      body: Stack(
-        children: [
-          gradientBg(),
-          Center(
-            child: Container(
-              width: 320,
-              height: 320,
-              child: GridView.builder(
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 3),
-                itemBuilder: (_, index) => buildCell(index),
-                itemCount: 9,
+          ],
+        ),
+        body: Stack(
+          children: [
+            gradientBg(),
+            Center(
+              child: Container(
+                width: 320,
+                height: 320,
+                child: GridView.builder(
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 3),
+                  itemBuilder: (_, index) => buildCell(index),
+                  itemCount: 9,
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 }
-
 // ================= GRADIENT BG =================
 Widget gradientBg() {
   return Container(
