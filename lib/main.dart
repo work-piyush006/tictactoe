@@ -65,15 +65,15 @@ class _SplashScreenState extends State<SplashScreen>
     Future.delayed(Duration(seconds: 3), () {
       if (mounted) {
         Navigator.pushReplacement(
-            context, MaterialPageRoute(builder: (_) => HomeScreen()));
+            context,
+            MaterialPageRoute(
+                builder: (_) => HomeScreen(bgmPlayer: bgmPlayer)));
       }
     });
   }
 
   @override
   void dispose() {
-    bgmPlayer.stop();
-    bgmPlayer.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -111,7 +111,7 @@ class _SplashScreenState extends State<SplashScreen>
                   ),
                   SizedBox(height: 20),
                   Text(
-                    "X & O\nUltimate Battle ⚡",
+                    "X & O\nUltimate Battle",
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.white,
@@ -163,11 +163,15 @@ class FloatingXO extends CustomPainter {
 
 // ================= HOME SCREEN =================
 class HomeScreen extends StatelessWidget {
+  final AudioPlayer bgmPlayer;
+  HomeScreen({required this.bgmPlayer});
+
   void navigateToGame(BuildContext context, bool vsComputer) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => SymbolSelectionScreen(vsComputer: vsComputer),
+        builder: (_) => SymbolSelectionScreen(
+            vsComputer: vsComputer, bgmPlayer: bgmPlayer),
       ),
     );
   }
@@ -180,7 +184,7 @@ class HomeScreen extends StatelessWidget {
           Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
-                colors: [Colors.deepPurple.shade900, Colors.black],
+                colors: [Colors.deepPurple.shade800, Colors.purple.shade900],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -204,30 +208,45 @@ class HomeScreen extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  "Choose Mode to Start 🎮",
+                  "Choose Mode to Start",
+                  textAlign: TextAlign.center,
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
+                    shadows: [
+                      Shadow(
+                          blurRadius: 4,
+                          color: Colors.black45,
+                          offset: Offset(2, 2))
+                    ],
                   ),
                 ),
-                SizedBox(height: 40),
+                SizedBox(height: 50),
                 ElevatedButton(
                   onPressed: () => navigateToGame(context, true),
                   style: ElevatedButton.styleFrom(
-                    minimumSize: Size(220, 50),
-                    backgroundColor: Colors.greenAccent,
+                    minimumSize: Size(240, 55),
+                    backgroundColor: Colors.greenAccent.shade700,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
                   ),
-                  child: Text("🤖 Play vs Computer"),
+                  child: Text("Play vs Computer",
+                      style:
+                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                 ),
                 SizedBox(height: 20),
                 ElevatedButton(
                   onPressed: () => navigateToGame(context, false),
                   style: ElevatedButton.styleFrom(
-                    minimumSize: Size(220, 50),
-                    backgroundColor: Colors.blueAccent,
+                    minimumSize: Size(240, 55),
+                    backgroundColor: Colors.blueAccent.shade700,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12)),
                   ),
-                  child: Text("👬 Play with Friends"),
+                  child: Text("Play with Friends",
+                      style:
+                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
@@ -241,15 +260,20 @@ class HomeScreen extends StatelessWidget {
 // ================= SYMBOL SELECTION =================
 class SymbolSelectionScreen extends StatelessWidget {
   final bool vsComputer;
-  SymbolSelectionScreen({required this.vsComputer});
+  final AudioPlayer bgmPlayer;
+  SymbolSelectionScreen({required this.vsComputer, required this.bgmPlayer});
 
   void startGame(BuildContext context, String playerSymbol) {
     if (vsComputer) {
       showDialog(
         context: context,
-        builder: (_) => DifficultyDialog(playerSymbol: playerSymbol),
+        builder: (_) => DifficultyDialog(
+          playerSymbol: playerSymbol,
+          bgmPlayer: bgmPlayer,
+        ),
       );
     } else {
+      bgmPlayer.stop();
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -277,6 +301,12 @@ class SymbolSelectionScreen extends StatelessWidget {
                 color: Colors.white,
                 fontSize: 28,
                 fontWeight: FontWeight.bold,
+                shadows: [
+                  Shadow(
+                      blurRadius: 3,
+                      color: Colors.black45,
+                      offset: Offset(1, 1))
+                ],
               ),
             ),
             SizedBox(height: 30),
@@ -288,6 +318,8 @@ class SymbolSelectionScreen extends StatelessWidget {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.redAccent,
                     minimumSize: Size(100, 100),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20)),
                   ),
                   child: Text("X", style: TextStyle(fontSize: 36)),
                 ),
@@ -297,6 +329,8 @@ class SymbolSelectionScreen extends StatelessWidget {
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blueAccent,
                     minimumSize: Size(100, 100),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20)),
                   ),
                   child: Text("O", style: TextStyle(fontSize: 36)),
                 ),
@@ -312,12 +346,15 @@ class SymbolSelectionScreen extends StatelessWidget {
 // ================= DIFFICULTY DIALOG =================
 class DifficultyDialog extends StatelessWidget {
   final String playerSymbol;
-  DifficultyDialog({required this.playerSymbol});
+  final AudioPlayer bgmPlayer;
+  DifficultyDialog({required this.playerSymbol, required this.bgmPlayer});
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text("Select Difficulty Level"),
+      backgroundColor: Colors.deepPurple.shade800,
+      title: Text("Select Difficulty Level",
+          style: TextStyle(color: Colors.white)),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -332,21 +369,31 @@ class DifficultyDialog extends StatelessWidget {
   }
 
   Widget difficultyButton(BuildContext context, String difficulty) {
-    return ElevatedButton(
-      onPressed: () {
-        Navigator.pop(context);
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => GameScreen(
-              vsComputer: true,
-              playerSymbol: playerSymbol,
-              difficulty: difficulty,
+    return Container(
+      margin: EdgeInsets.symmetric(vertical: 4),
+      width: double.infinity,
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: Colors.purpleAccent.shade700,
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+        onPressed: () {
+          bgmPlayer.stop();
+          Navigator.pop(context);
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (_) => GameScreen(
+                vsComputer: true,
+                playerSymbol: playerSymbol,
+                difficulty: difficulty,
+              ),
             ),
-          ),
-        );
-      },
-      child: Text(difficulty),
+          );
+        },
+        child: Text(difficulty, style: TextStyle(fontSize: 18)),
+      ),
     );
   }
 }
@@ -372,7 +419,6 @@ class _GameScreenState extends State<GameScreen> {
   String currentPlayer = "";
   Random random = Random();
   final AudioPlayer tapPlayer = AudioPlayer();
-  final AudioPlayer celebrationPlayer = AudioPlayer();
 
   int scoreX = 0;
   int scoreO = 0;
@@ -390,9 +436,6 @@ class _GameScreenState extends State<GameScreen> {
   Future<void> playTapSound() async =>
       await tapPlayer.play(AssetSource("Tap.mp3"));
 
-  Future<void> playCelebration() async =>
-      await celebrationPlayer.play(AssetSource("Celebration.mp3"));
-
   void makeMove(int index) async {
     if (board[index] != "") return;
     await playTapSound();
@@ -402,13 +445,12 @@ class _GameScreenState extends State<GameScreen> {
     });
 
     if (_checkWinner(board, currentPlayer)) {
-      await playCelebration();
       currentPlayer == "X" ? scoreX++ : scoreO++;
       showWinnerDialog("$currentPlayer Wins!");
       return;
     } else if (!board.contains("")) {
       draws++;
-      showWinnerDialog("Draw 🤝");
+      showWinnerDialog("Draw");
       return;
     }
 
@@ -454,21 +496,18 @@ class _GameScreenState extends State<GameScreen> {
 
     String opponent = widget.playerSymbol;
 
-    // Win if possible
     for (int i in empty) {
       List<String> temp = List.from(board);
       temp[i] = currentPlayer;
       if (_checkWinner(temp, currentPlayer)) return i;
     }
 
-    // Block opponent
     for (int i in empty) {
       List<String> temp = List.from(board);
       temp[i] = opponent;
       if (_checkWinner(temp, opponent)) return i;
     }
 
-    // Smart move
     if (Random().nextDouble() < smartChance) {
       if (empty.contains(4)) return 4;
       List<int> corners = [0, 2, 6, 8];
@@ -509,8 +548,10 @@ class _GameScreenState extends State<GameScreen> {
       context: context,
       barrierDismissible: false,
       builder: (_) => AlertDialog(
-        title: Text(title),
-        content: Text("Scoreboard:\nX: $scoreX | O: $scoreO | Draws: $draws"),
+        backgroundColor: Colors.deepPurple.shade800,
+        title: Text(title, style: TextStyle(color: Colors.white)),
+        content: Text("Scoreboard:\nX: $scoreX | O: $scoreO | Draws: $draws",
+            style: TextStyle(color: Colors.white)),
         actions: [
           TextButton(
             onPressed: () {
@@ -524,14 +565,14 @@ class _GameScreenState extends State<GameScreen> {
               });
               Navigator.pop(context);
             },
-            child: Text("Replay"),
+            child: Text("Replay", style: TextStyle(color: Colors.greenAccent)),
           ),
           TextButton(
             onPressed: () {
               Navigator.pushReplacement(
-                  context, MaterialPageRoute(builder: (_) => HomeScreen()));
+                  context, MaterialPageRoute(builder: (_) => HomeScreen(bgmPlayer: AudioPlayer()..play(AssetSource("bgm.mp3")))));
             },
-            child: Text("Home"),
+            child: Text("Home", style: TextStyle(color: Colors.blueAccent)),
           ),
         ],
       ),
@@ -548,7 +589,7 @@ class _GameScreenState extends State<GameScreen> {
         centerTitle: true,
       ),
       body: GridView.builder(
-        padding: EdgeInsets.all(10),
+        padding: EdgeInsets.all(12),
         shrinkWrap: true,
         gridDelegate:
             SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3),
@@ -559,8 +600,10 @@ class _GameScreenState extends State<GameScreen> {
               makeMove(index);
             },
             child: Container(
+              margin: EdgeInsets.all(6),
               decoration: BoxDecoration(
-                border: Border.all(color: Colors.white),
+                color: Colors.deepPurple.shade700,
+                borderRadius: BorderRadius.circular(12),
               ),
               child: Center(
                 child: Text(
