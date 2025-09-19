@@ -37,12 +37,10 @@ class _SplashScreenState extends State<SplashScreen>
   void initState() {
     super.initState();
 
-    // Background music
     bgmPlayer = AudioPlayer();
     bgmPlayer.setReleaseMode(ReleaseMode.loop);
     bgmPlayer.play(AssetSource("bgm.mp3"));
 
-    // Logo animation
     _controller =
         AnimationController(vsync: this, duration: Duration(seconds: 2));
     _animation =
@@ -55,13 +53,11 @@ class _SplashScreenState extends State<SplashScreen>
           });
     _controller.repeat(reverse: true);
 
-    // Floating particles
     for (int i = 0; i < 50; i++) {
       particles.add(
           Offset(random.nextDouble() * 400, random.nextDouble() * 800));
     }
 
-    // Navigate to HomeScreen after delay
     Future.delayed(Duration(seconds: 3), () {
       if (mounted) {
         Navigator.pushReplacement(
@@ -162,18 +158,52 @@ class FloatingXO extends CustomPainter {
 }
 
 // ================= HOME SCREEN =================
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   final AudioPlayer bgmPlayer;
   HomeScreen({required this.bgmPlayer});
 
-  void navigateToGame(BuildContext context, bool vsComputer) {
+  @override
+  _HomeScreenState createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+  List<Offset> particles = [];
+  Random random = Random();
+
+  @override
+  void initState() {
+    super.initState();
+    _controller =
+        AnimationController(vsync: this, duration: Duration(seconds: 2));
+    _animation = Tween<double>(begin: 0.8, end: 1.2)
+        .animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut))
+          ..addListener(() {
+            setState(() {});
+          });
+    _controller.repeat(reverse: true);
+
+    for (int i = 0; i < 40; i++) {
+      particles.add(
+          Offset(random.nextDouble() * 400, random.nextDouble() * 800));
+    }
+  }
+
+  void navigateToGame(bool vsComputer) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => SymbolSelectionScreen(
-            vsComputer: vsComputer, bgmPlayer: bgmPlayer),
-      ),
+          builder: (_) =>
+              SymbolSelectionScreen(vsComputer: vsComputer, bgmPlayer: widget.bgmPlayer)),
     );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
   @override
@@ -192,15 +222,7 @@ class HomeScreen extends StatelessWidget {
           ),
           Positioned.fill(
             child: CustomPaint(
-              painter: FloatingXO(
-                particles: List.generate(
-                  40,
-                  (index) => Offset(
-                    Random().nextDouble() * 400,
-                    Random().nextDouble() * 800,
-                  ),
-                ),
-              ),
+              painter: FloatingXO(particles: particles),
             ),
           ),
           Center(
@@ -224,7 +246,7 @@ class HomeScreen extends StatelessWidget {
                 ),
                 SizedBox(height: 50),
                 ElevatedButton(
-                  onPressed: () => navigateToGame(context, true),
+                  onPressed: () => navigateToGame(true),
                   style: ElevatedButton.styleFrom(
                     minimumSize: Size(240, 55),
                     backgroundColor: Colors.greenAccent.shade700,
@@ -237,7 +259,7 @@ class HomeScreen extends StatelessWidget {
                 ),
                 SizedBox(height: 20),
                 ElevatedButton(
-                  onPressed: () => navigateToGame(context, false),
+                  onPressed: () => navigateToGame(false),
                   style: ElevatedButton.styleFrom(
                     minimumSize: Size(240, 55),
                     backgroundColor: Colors.blueAccent.shade700,
@@ -267,10 +289,8 @@ class SymbolSelectionScreen extends StatelessWidget {
     if (vsComputer) {
       showDialog(
         context: context,
-        builder: (_) => DifficultyDialog(
-          playerSymbol: playerSymbol,
-          bgmPlayer: bgmPlayer,
-        ),
+        builder: (_) =>
+            DifficultyDialog(playerSymbol: playerSymbol, bgmPlayer: bgmPlayer),
       );
     } else {
       bgmPlayer.stop();
@@ -291,53 +311,67 @@ class SymbolSelectionScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.deepPurple.shade900,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              "Choose Your Symbol",
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                shadows: [
-                  Shadow(
-                      blurRadius: 3,
-                      color: Colors.black45,
-                      offset: Offset(1, 1))
-                ],
+      body: Stack(
+        children: [
+          Positioned.fill(
+            child: CustomPaint(
+              painter: FloatingXO(
+                particles: List.generate(
+                  40,
+                  (_) =>
+                      Offset(Random().nextDouble() * 400, Random().nextDouble() * 800),
+                ),
               ),
             ),
-            SizedBox(height: 30),
-            Row(
+          ),
+          Center(
+            child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                ElevatedButton(
-                  onPressed: () => startGame(context, "X"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.redAccent,
-                    minimumSize: Size(100, 100),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20)),
-                  ),
-                  child: Text("X", style: TextStyle(fontSize: 36)),
+                Text(
+                  "Choose Your Symbol",
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      shadows: [
+                        Shadow(
+                            blurRadius: 3,
+                            color: Colors.black45,
+                            offset: Offset(1, 1))
+                      ]),
                 ),
-                SizedBox(width: 40),
-                ElevatedButton(
-                  onPressed: () => startGame(context, "O"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blueAccent,
-                    minimumSize: Size(100, 100),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20)),
-                  ),
-                  child: Text("O", style: TextStyle(fontSize: 36)),
+                SizedBox(height: 30),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    ElevatedButton(
+                      onPressed: () => startGame(context, "X"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.redAccent,
+                        minimumSize: Size(100, 100),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20)),
+                      ),
+                      child: Text("X", style: TextStyle(fontSize: 36)),
+                    ),
+                    SizedBox(width: 40),
+                    ElevatedButton(
+                      onPressed: () => startGame(context, "O"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blueAccent,
+                        minimumSize: Size(100, 100),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20)),
+                      ),
+                      child: Text("O", style: TextStyle(fontSize: 36)),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -385,10 +419,9 @@ class DifficultyDialog extends StatelessWidget {
             context,
             MaterialPageRoute(
               builder: (_) => GameScreen(
-                vsComputer: true,
-                playerSymbol: playerSymbol,
-                difficulty: difficulty,
-              ),
+                  vsComputer: true,
+                  playerSymbol: playerSymbol,
+                  difficulty: difficulty),
             ),
           );
         },
@@ -414,42 +447,69 @@ class GameScreen extends StatefulWidget {
   _GameScreenState createState() => _GameScreenState();
 }
 
-class _GameScreenState extends State<GameScreen> {
+class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   List<String> board = List.filled(9, "");
   String currentPlayer = "";
   Random random = Random();
   final AudioPlayer tapPlayer = AudioPlayer();
-
+  final AudioPlayer celebrationPlayer = AudioPlayer();
   int scoreX = 0;
   int scoreO = 0;
   int draws = 0;
+  bool gameOver = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     currentPlayer = "X";
     if (widget.vsComputer && widget.playerSymbol != "X") {
       Future.delayed(Duration(milliseconds: 500), () => computerMove());
     }
   }
 
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      Navigator.popUntil(context, (route) => route.isFirst);
+    }
+  }
+
   Future<void> playTapSound() async =>
       await tapPlayer.play(AssetSource("Tap.mp3"));
 
-  void makeMove(int index) async {
-    if (board[index] != "") return;
-    await playTapSound();
+  Future<void> playCelebration() async =>
+      await celebrationPlayer.play(AssetSource("Celebration.mp3"));
 
-    setState(() {
-      board[index] = currentPlayer;
-    });
+  void makeMove(int index) async {
+    if (gameOver || board[index] != "") return;
+
+    if (widget.vsComputer && currentPlayer != widget.playerSymbol) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text("Wait for your turn")));
+      return;
+    }
+
+    await playTapSound();
+    setState(() => board[index] = currentPlayer);
 
     if (_checkWinner(board, currentPlayer)) {
       currentPlayer == "X" ? scoreX++ : scoreO++;
+      gameOver = true;
+      await playCelebration();
       showWinnerDialog("$currentPlayer Wins!");
       return;
     } else if (!board.contains("")) {
       draws++;
+      gameOver = true;
+      await playCelebration();
       showWinnerDialog("Draw");
       return;
     }
@@ -465,6 +525,7 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void computerMove() {
+    if (gameOver) return;
     int move = getComputerMove();
     makeMove(move);
   }
@@ -496,23 +557,25 @@ class _GameScreenState extends State<GameScreen> {
 
     String opponent = widget.playerSymbol;
 
+    // Win if possible
     for (int i in empty) {
       List<String> temp = List.from(board);
       temp[i] = currentPlayer;
       if (_checkWinner(temp, currentPlayer)) return i;
     }
 
+    // Block opponent
     for (int i in empty) {
       List<String> temp = List.from(board);
       temp[i] = opponent;
       if (_checkWinner(temp, opponent)) return i;
     }
 
+    // Smart/random move
     if (Random().nextDouble() < smartChance) {
       if (empty.contains(4)) return 4;
       List<int> corners = [0, 2, 6, 8];
-      List<int> availCorners =
-          empty.where((i) => corners.contains(i)).toList();
+      List<int> availCorners = empty.where((i) => corners.contains(i)).toList();
       if (availCorners.isNotEmpty)
         return availCorners[random.nextInt(availCorners.length)];
       List<int> sides = [1, 3, 5, 7];
@@ -533,7 +596,7 @@ class _GameScreenState extends State<GameScreen> {
       [1, 4, 7],
       [2, 5, 8],
       [0, 4, 8],
-      [2, 4, 6]
+      [2, 4, 6],
     ];
     for (var line in wins) {
       if (b[line[0]] == player &&
@@ -543,83 +606,93 @@ class _GameScreenState extends State<GameScreen> {
     return false;
   }
 
-  void showWinnerDialog(String title) {
+  void showWinnerDialog(String message) {
     showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => AlertDialog(
-        backgroundColor: Colors.deepPurple.shade800,
-        title: Text(title, style: TextStyle(color: Colors.white)),
-        content: Text("Scoreboard:\nX: $scoreX | O: $scoreO | Draws: $draws",
-            style: TextStyle(color: Colors.white)),
-        actions: [
-          TextButton(
-            onPressed: () {
-              setState(() {
-                board = List.filled(9, "");
-                currentPlayer = "X";
-                if (widget.vsComputer && widget.playerSymbol != "X") {
-                  Future.delayed(
-                      Duration(milliseconds: 500), () => computerMove());
-                }
-              });
-              Navigator.pop(context);
-            },
-            child: Text("Replay", style: TextStyle(color: Colors.greenAccent)),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pushReplacement(
-                  context, MaterialPageRoute(builder: (_) => HomeScreen(bgmPlayer: AudioPlayer()..play(AssetSource("bgm.mp3")))));
-            },
-            child: Text("Home", style: TextStyle(color: Colors.blueAccent)),
-          ),
-        ],
-      ),
-    );
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => AlertDialog(
+              title: Text(message),
+              content: Text("Score X: $scoreX  O: $scoreO  Draws: $draws"),
+              actions: [
+                ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      setState(() {
+                        board = List.filled(9, "");
+                        gameOver = false;
+                        currentPlayer = "X";
+                        if (widget.vsComputer &&
+                            widget.playerSymbol != "X") {
+                          Future.delayed(Duration(milliseconds: 500),
+                              () => computerMove());
+                        }
+                      });
+                    },
+                    child: Text("Play Again")),
+                ElevatedButton(
+                    onPressed: () {
+                      Navigator.popUntil(context, (route) => route.isFirst);
+                    },
+                    child: Text("Home")),
+              ],
+            ));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.deepPurple.shade900,
       appBar: AppBar(
         title: Text("Tic Tac Toe"),
         backgroundColor: Colors.deepPurple,
         centerTitle: true,
       ),
-      body: GridView.builder(
-        padding: EdgeInsets.all(12),
-        shrinkWrap: true,
-        gridDelegate:
-            SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3),
-        itemCount: 9,
-        itemBuilder: (context, index) {
-          return GestureDetector(
-            onTap: () {
-              makeMove(index);
-            },
-            child: Container(
-              margin: EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: Colors.deepPurple.shade700,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Center(
-                child: Text(
-                  board[index],
-                  style: TextStyle(
-                    fontSize: 64,
-                    color: board[index] == "X"
-                        ? Colors.redAccent
-                        : Colors.blueAccent,
-                    fontWeight: FontWeight.bold,
+      body: Column(
+        children: [
+          Expanded(
+            child: GridView.builder(
+              padding: EdgeInsets.all(16),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                  crossAxisSpacing: 8,
+                  mainAxisSpacing: 8),
+              itemCount: 9,
+              itemBuilder: (context, index) {
+                return GestureDetector(
+                  onTap: () => makeMove(index),
+                  child: Container(
+                    decoration: BoxDecoration(
+                        color: Colors.deepPurple.shade50,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                              color: Colors.black26,
+                              blurRadius: 4,
+                              offset: Offset(2, 2))
+                        ]),
+                    child: Center(
+                      child: Text(
+                        board[index],
+                        style: TextStyle(
+                            fontSize: 48,
+                            fontWeight: FontWeight.bold,
+                            color: board[index] == "X"
+                                ? Colors.red
+                                : Colors.blue),
+                      ),
+                    ),
                   ),
-                ),
-              ),
+                );
+              },
             ),
-          );
-        },
+          ),
+          Padding(
+            padding: EdgeInsets.all(16),
+            child: Text(
+              "Turn: $currentPlayer",
+              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
       ),
     );
   }
