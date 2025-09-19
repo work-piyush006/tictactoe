@@ -26,7 +26,7 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen>
-    with SingleTickerProviderStateMixin {
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late AudioPlayer bgmPlayer;
   late AnimationController _controller;
   late Animation<double> _animation;
@@ -36,6 +36,7 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
 
     bgmPlayer = AudioPlayer();
     bgmPlayer.setReleaseMode(ReleaseMode.loop);
@@ -70,8 +71,19 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _controller.dispose();
     super.dispose();
+  }
+
+  // App lifecycle events
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.paused) {
+      bgmPlayer.pause();
+    } else if (state == AppLifecycleState.resumed) {
+      bgmPlayer.resume();
+    }
   }
 
   @override
@@ -79,15 +91,7 @@ class _SplashScreenState extends State<SplashScreen>
     return Scaffold(
       body: Stack(
         children: [
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [Colors.deepPurple.shade900, Colors.indigo.shade700],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-          ),
+          gradientBg(),
           AnimatedBuilder(
             animation: _controller,
             builder: (_, __) {
@@ -197,14 +201,14 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   void navigateToGame(bool vsComputer) {
-    widget.bgmPlayer.stop();
+    widget.bgmPlayer.pause();
     Navigator.push(
       context,
       MaterialPageRoute(
           builder: (_) =>
               SymbolSelectionScreen(vsComputer: vsComputer, bgmPlayer: widget.bgmPlayer)),
     ).then((_) {
-      widget.bgmPlayer.play(AssetSource("bgm.mp3"));
+      widget.bgmPlayer.resume();
     });
   }
 
@@ -280,6 +284,7 @@ class _HomeScreenState extends State<HomeScreen>
       ),
       body: Stack(
         children: [
+          gradientBg(),
           Positioned.fill(child: CustomPaint(painter: FloatingXO(particles: particles))),
           _tabs[_selectedIndex],
         ],
@@ -313,7 +318,7 @@ class SymbolSelectionScreen extends StatelessWidget {
             DifficultyDialog(playerSymbol: playerSymbol, bgmPlayer: bgmPlayer),
       );
     } else {
-      bgmPlayer.stop();
+      bgmPlayer.pause();
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
@@ -330,40 +335,44 @@ class SymbolSelectionScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.deepPurple.shade900,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text("Choose Your Symbol",
-                style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
-            SizedBox(height: 30),
-            Row(
+      body: Stack(
+        children: [
+          gradientBg(),
+          Center(
+            child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                ElevatedButton(
-                  onPressed: () => startGame(context, "X"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.redAccent,
-                    minimumSize: Size(100, 100),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                  ),
-                  child: Text("X", style: TextStyle(fontSize: 36)),
-                ),
-                SizedBox(width: 40),
-                ElevatedButton(
-                  onPressed: () => startGame(context, "O"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blueAccent,
-                    minimumSize: Size(100, 100),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                  ),
-                  child: Text("O", style: TextStyle(fontSize: 36)),
+                Text("Choose Your Symbol",
+                    style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
+                SizedBox(height: 30),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    ElevatedButton(
+                      onPressed: () => startGame(context, "X"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.redAccent,
+                        minimumSize: Size(100, 100),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      ),
+                      child: Text("X", style: TextStyle(fontSize: 36)),
+                    ),
+                    SizedBox(width: 40),
+                    ElevatedButton(
+                      onPressed: () => startGame(context, "O"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blueAccent,
+                        minimumSize: Size(100, 100),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      ),
+                      child: Text("O", style: TextStyle(fontSize: 36)),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -392,7 +401,7 @@ class DifficultyDialog extends StatelessWidget {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                     onPressed: () {
-                      bgmPlayer.stop();
+                      bgmPlayer.pause();
                       Navigator.pop(context);
                       Navigator.pushReplacement(
                         context,
@@ -449,11 +458,11 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void playTapSound() async {
-    await tapPlayer.play(AssetSource("tap.mp3"));
+    await tapPlayer.play(AssetSource("Tap.mp3"));
   }
 
   void playCelebrateSound() async {
-    await celebratePlayer.play(AssetSource("celebration.mp3"));
+    await celebratePlayer.play(AssetSource("Celebration.mp3"));
   }
 
   void resetBoard() {
@@ -619,11 +628,36 @@ class _GameScreenState extends State<GameScreen> {
       builder: (_) => AlertDialog(
         backgroundColor: Colors.deepPurple.shade700,
         title: Text("Wait for your turn 💢",
-            style: TextStyle(color: Colors.white)),
+            style: TextStyle(color: Colors.white, fontSize: 18)),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context), child: Text("OK"))
+            onPressed: () {
+              Navigator.pop(context);
+            },
+            child: Text("OK", style: TextStyle(color: Colors.white)),
+          ),
         ],
+      ),
+    );
+  }
+
+  Widget buildCell(int index) {
+    return GestureDetector(
+      onTap: () => handleTap(index),
+      child: Container(
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.white70),
+        ),
+        child: Center(
+          child: Text(
+            board[index],
+            style: TextStyle(
+              fontSize: 48,
+              color: board[index] == "X" ? Colors.redAccent : Colors.blueAccent,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -631,53 +665,33 @@ class _GameScreenState extends State<GameScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.deepPurple.shade900,
       appBar: AppBar(
+        title: Text(widget.vsComputer ? "Vs Computer" : "2 Players"),
         backgroundColor: Colors.deepPurple,
-        title: Text("Tic Tac Toe"),
         actions: [
-          IconButton(
-            icon: Text("🚪", style: TextStyle(fontSize: 22)),
-            onPressed: () {
-              Navigator.pop(context);
-            },
-          )
+          Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: Center(
+              child: Text(
+                "${playerScore} : ${opponentScore}",
+                style: TextStyle(fontSize: 20, color: Colors.white),
+              ),
+            ),
+          ),
         ],
       ),
-      body: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+      body: Stack(
         children: [
-          Text("Player (${widget.playerSymbol}) : $playerScore",
-              style: TextStyle(color: Colors.white, fontSize: 18)),
-          Text(
-              widget.vsComputer
-                  ? "Computer ($opponentSymbol) : $opponentScore"
-                  : "Friend ($opponentSymbol) : $opponentScore",
-              style: TextStyle(color: Colors.white, fontSize: 18)),
-          SizedBox(height: 20),
-          GridView.builder(
-            shrinkWrap: true,
-            gridDelegate:
-                SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3),
-            itemCount: 9,
-            itemBuilder: (_, i) => GestureDetector(
-              onTap: () => handleTap(i),
-              child: Container(
-                margin: EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: Colors.deepPurple.shade700,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Center(
-                  child: Text(
-                    board[i],
-                    style: TextStyle(
-                      fontSize: 48,
-                      fontWeight: FontWeight.bold,
-                      color: board[i] == "X" ? Colors.red : Colors.blue,
-                    ),
-                  ),
-                ),
+          gradientBg(),
+          Center(
+            child: Container(
+              width: 320,
+              height: 320,
+              child: GridView.builder(
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3),
+                itemBuilder: (_, index) => buildCell(index),
+                itemCount: 9,
               ),
             ),
           ),
@@ -685,4 +699,17 @@ class _GameScreenState extends State<GameScreen> {
       ),
     );
   }
+}
+
+// ================= GRADIENT BG =================
+Widget gradientBg() {
+  return Container(
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        colors: [Colors.deepPurple.shade400, Colors.deepPurple.shade900],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      ),
+    ),
+  );
 }
