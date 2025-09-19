@@ -24,16 +24,16 @@ jobs:
           flutter-version: '3.13.8'
           channel: stable
 
-      # 3. Get dependencies
-      - name: Flutter Pub Get
-        run: flutter pub get
-
-      # 4. Recreate Android folder safely (V2 embedding)
+      # 3. Recreate Android folder safely (V2 embedding)
       - name: Recreate Android Folder
         run: |
           rm -rf android
           flutter create .   # recreate Android folder (V2 embedding)
           echo "Fresh Android folder created"
+
+      # 4. Get dependencies
+      - name: Flutter Pub Get
+        run: flutter pub get
 
       # 5. Replace logo in mipmap folders
       - name: Replace Flutter Logo in Android
