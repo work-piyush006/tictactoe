@@ -165,9 +165,8 @@ class HomeScreen extends StatefulWidget {
   _HomeScreenState createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen>
-    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
-  late AnimationController _controller;
+class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin, WidgetsBindingObserver {
+  late AnimationController _particleController;
   List<Offset> particles = [];
   Random random = Random();
   bool isBgmOn = true;
@@ -177,31 +176,27 @@ class _HomeScreenState extends State<HomeScreen>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
 
-    // Particle animation controller
-    _controller =
-        AnimationController(vsync: this, duration: Duration(seconds: 2))
-          ..repeat(reverse: true);
+    _particleController = AnimationController(
+      vsync: this,
+      duration: Duration(seconds: 2),
+    )..repeat(reverse: true);
 
-    // Random particle positions
-    for (int i = 0; i < 40; i++) {
-      particles.add(
-        Offset(random.nextDouble() * MediaQuery.of(context).size.width,
-            random.nextDouble() * MediaQuery.of(context).size.height),
-      );
+    // generate particle positions
+    for (int i = 0; i < 50; i++) {
+      particles.add(Offset(random.nextDouble() * MediaQuery.of(context).size.width,
+          random.nextDouble() * MediaQuery.of(context).size.height));
     }
 
-    // Start BGM
     widget.bgmPlayer.resume();
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _particleController.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
-  // BGM pause/resume on minimize
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused) {
@@ -214,11 +209,8 @@ class _HomeScreenState extends State<HomeScreen>
   void toggleBgm() {
     setState(() {
       isBgmOn = !isBgmOn;
-      if (isBgmOn) {
-        widget.bgmPlayer.resume();
-      } else {
-        widget.bgmPlayer.pause();
-      }
+      if (isBgmOn) widget.bgmPlayer.resume();
+      else widget.bgmPlayer.pause();
     });
   }
 
@@ -227,8 +219,7 @@ class _HomeScreenState extends State<HomeScreen>
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) =>
-            SymbolSelectionScreen(vsComputer: vsComputer, bgmPlayer: widget.bgmPlayer),
+        builder: (_) => SymbolSelectionScreen(vsComputer: vsComputer, bgmPlayer: widget.bgmPlayer),
       ),
     ).then((_) {
       if (isBgmOn) widget.bgmPlayer.resume();
@@ -241,9 +232,12 @@ class _HomeScreenState extends State<HomeScreen>
       body: Stack(
         children: [
           gradientBg(),
-          // Floating X/O particles
           Positioned.fill(
-              child: CustomPaint(painter: FloatingXO(particles: particles))),
+            child: AnimatedBuilder(
+              animation: _particleController,
+              builder: (_, __) => CustomPaint(painter: FloatingXO(particles: particles)),
+            ),
+          ),
           Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -262,11 +256,8 @@ class _HomeScreenState extends State<HomeScreen>
                   style: ElevatedButton.styleFrom(
                       minimumSize: Size(220, 50),
                       backgroundColor: Colors.greenAccent.shade700,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12))),
-                  child: Text("Play vs Computer",
-                      style:
-                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                  child: Text("Play vs Computer", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                 ),
                 SizedBox(height: 20),
                 ElevatedButton(
@@ -274,24 +265,19 @@ class _HomeScreenState extends State<HomeScreen>
                   style: ElevatedButton.styleFrom(
                       minimumSize: Size(220, 50),
                       backgroundColor: Colors.blueAccent.shade700,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12))),
-                  child: Text("Play with Friends",
-                      style:
-                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                  child: Text("Play with Friends", style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
           ),
-          // Top buttons: BGM & Info
           Positioned(
             top: 40,
             right: 20,
             child: Row(
               children: [
                 IconButton(
-                  icon: Icon(isBgmOn ? Icons.volume_up : Icons.volume_off,
-                      color: Colors.white),
+                  icon: Icon(isBgmOn ? Icons.volume_up : Icons.volume_off, color: Colors.white),
                   onPressed: toggleBgm,
                 ),
                 SizedBox(width: 10),
@@ -299,20 +285,17 @@ class _HomeScreenState extends State<HomeScreen>
                   icon: Icon(Icons.info_outline, color: Colors.white),
                   onPressed: () {
                     showDialog(
-                        context: context,
-                        builder: (_) => AlertDialog(
-                              backgroundColor: Colors.deepPurple.shade800,
-                              title:
-                                  Text("About", style: TextStyle(color: Colors.white)),
-                              content: Text(
-                                  "Made by G A PRODUCTION\nVersion 1.0.0\nSuggestion: Try to Win Against Our SuperExpert Mode ",
-                                  style: TextStyle(color: Colors.white70)),
-                              actions: [
-                                TextButton(
-                                    onPressed: () => Navigator.pop(context),
-                                    child: Text("Close"))
-                              ],
-                            ));
+                      context: context,
+                      builder: (_) => AlertDialog(
+                        backgroundColor: Colors.deepPurple.shade800,
+                        title: Text("About", style: TextStyle(color: Colors.white)),
+                        content: Text("Made by G A PRODUCTION\nVersion 1.0.0\nTry to Win Against Our SuperExpert AI",
+                            style: TextStyle(color: Colors.white70)),
+                        actions: [
+                          TextButton(onPressed: () => Navigator.pop(context), child: Text("Close"))
+                        ],
+                      ),
+                    );
                   },
                 ),
               ],
@@ -323,6 +306,8 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 }
+
+
 // ================= SYMBOL SELECTION =================
 class SymbolSelectionScreen extends StatelessWidget {
   final bool vsComputer;
@@ -441,17 +426,12 @@ class DifficultyDialog extends StatelessWidget {
   }
 }
 
-// ================= GAME SCREEN =================
+// ================= ENHANCED GAME SCREEN =================
 class GameScreen extends StatefulWidget {
   final bool vsComputer;
   final String playerSymbol;
-  final String difficulty;
 
-  GameScreen({
-    required this.vsComputer,
-    required this.playerSymbol,
-    required this.difficulty,
-  });
+  GameScreen({required this.vsComputer, required this.playerSymbol});
 
   @override
   _GameScreenState createState() => _GameScreenState();
@@ -463,45 +443,26 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   late String opponentSymbol;
   bool gameOver = false;
   String resultMessage = "";
-  int playerScore = 0;
-  int opponentScore = 0;
+  List<int> winningLine = [];
 
   final AudioPlayer tapPlayer = AudioPlayer();
   final AudioPlayer celebratePlayer = AudioPlayer();
 
-  late AnimationController particleController;
-  List<Offset> particles = [];
-  Random random = Random();
-
-  List<int> winningLine = [];
-
   @override
   void initState() {
     super.initState();
-
     board = List.filled(9, "");
     currentTurn = "X";
     opponentSymbol = widget.playerSymbol == "X" ? "O" : "X";
 
-    // Particle animation controller
-    particleController =
-        AnimationController(vsync: this, duration: Duration(seconds: 2))
-          ..repeat(reverse: true);
-
-    for (int i = 0; i < 50; i++) {
-      particles.add(
-        Offset(random.nextDouble() * 320, random.nextDouble() * 320),
-      );
-    }
-
+    // If player is O, AI starts
     if (widget.vsComputer && widget.playerSymbol == "O") {
-      Future.delayed(Duration(milliseconds: 500), () => computerMove());
+      Future.delayed(Duration(milliseconds: 300), () => computerMove());
     }
   }
 
   @override
   void dispose() {
-    particleController.dispose();
     tapPlayer.dispose();
     celebratePlayer.dispose();
     super.dispose();
@@ -526,7 +487,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     });
 
     if (widget.vsComputer && !gameOver && currentTurn == opponentSymbol) {
-      Future.delayed(Duration(milliseconds: 700), () => computerMove());
+      Future.delayed(Duration(milliseconds: 300), () => computerMove());
     }
   }
 
@@ -534,12 +495,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     currentTurn = currentTurn == "X" ? "O" : "X";
   }
 
+  // ================= SUPER EXPERT AI (MINIMAX) =================
   void computerMove() {
-    List<int> empty = [];
-    for (int i = 0; i < 9; i++) if (board[i] == "") empty.add(i);
-    if (empty.isEmpty) return;
-
-    int move = getBestMove(widget.difficulty);
+    int move = findBestMove();
     setState(() {
       board[move] = currentTurn;
       playTapSound();
@@ -548,82 +506,80 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     });
   }
 
-  int getBestMove(String diff) {
-    List<int> empty = [];
-    for (int i = 0; i < 9; i++) if (board[i] == "") empty.add(i);
-
-    if (diff == "Easy") return empty[Random().nextInt(empty.length)];
-    if (diff == "Medium") {
-      if (Random().nextBool()) return empty[Random().nextInt(empty.length)];
-      return findWinningMove(currentTurn) ?? empty[0];
+  int findBestMove() {
+    int bestScore = -1000;
+    int move = 0;
+    for (int i = 0; i < 9; i++) {
+      if (board[i] == "") {
+        board[i] = opponentSymbol;
+        int score = minimax(board, 0, false);
+        board[i] = "";
+        if (score > bestScore) {
+          bestScore = score;
+          move = i;
+        }
+      }
     }
-    if (diff == "Hard" || diff == "Expert" || diff == "Super Expert") {
-      return findWinningMove(currentTurn) ??
-          findWinningMove(widget.playerSymbol) ??
-          empty[Random().nextInt(empty.length)];
-    }
-    return empty[0];
+    return move;
   }
 
-  int? findWinningMove(String symbol) {
-    List<List<int>> wins = [
-      [0, 1, 2],
-      [3, 4, 5],
-      [6, 7, 8],
-      [0, 3, 6],
-      [1, 4, 7],
-      [2, 5, 8],
-      [0, 4, 8],
-      [2, 4, 6]
-    ];
-
-    for (var line in wins) {
-      if (board[line[0]] == symbol &&
-          board[line[1]] == symbol &&
-          board[line[2]] == "") return line[2];
-      if (board[line[0]] == symbol &&
-          board[line[2]] == symbol &&
-          board[line[1]] == "") return line[1];
-      if (board[line[1]] == symbol &&
-          board[line[2]] == symbol &&
-          board[line[0]] == "") return line[0];
+  int minimax(List<String> b, int depth, bool isMaximizing) {
+    String winner = checkWinnerReturn();
+    if (winner != "") {
+      if (winner == opponentSymbol) return 10 - depth;
+      if (winner == widget.playerSymbol) return depth - 10;
+      return 0;
     }
-    return null;
+
+    if (isMaximizing) {
+      int bestScore = -1000;
+      for (int i = 0; i < 9; i++) {
+        if (b[i] == "") {
+          b[i] = opponentSymbol;
+          bestScore = max(bestScore, minimax(b, depth + 1, false));
+          b[i] = "";
+        }
+      }
+      return bestScore;
+    } else {
+      int bestScore = 1000;
+      for (int i = 0; i < 9; i++) {
+        if (b[i] == "") {
+          b[i] = widget.playerSymbol;
+          bestScore = min(bestScore, minimax(b, depth + 1, true));
+          b[i] = "";
+        }
+      }
+      return bestScore;
+    }
   }
 
-  void checkWinner() {
+  // ================= WINNER CHECK =================
+  String checkWinnerReturn() {
     List<List<int>> wins = [
-      [0, 1, 2],
-      [3, 4, 5],
-      [6, 7, 8],
-      [0, 3, 6],
-      [1, 4, 7],
-      [2, 5, 8],
-      [0, 4, 8],
-      [2, 4, 6]
+      [0,1,2],[3,4,5],[6,7,8],
+      [0,3,6],[1,4,7],[2,5,8],
+      [0,4,8],[2,4,6]
     ];
 
     for (var line in wins) {
       if (board[line[0]] != "" &&
           board[line[0]] == board[line[1]] &&
           board[line[1]] == board[line[2]]) {
-        gameOver = true;
-        resultMessage = "${board[line[0]]} Wins!";
         winningLine = line;
-        playCelebrateSound();
-        if (board[line[0]] == widget.playerSymbol) {
-          playerScore++;
-        } else {
-          opponentScore++;
-        }
-        showEndDialog(resultMessage);
-        return;
+        return board[line[0]];
       }
     }
 
-    if (!board.contains("")) {
+    if (!board.contains("")) return "Draw";
+    return "";
+  }
+
+  void checkWinner() {
+    String winner = checkWinnerReturn();
+    if (winner != "") {
       gameOver = true;
-      resultMessage = "It's a Draw!";
+      resultMessage = winner == "Draw" ? "It's a Draw!" : "$winner Wins!";
       playCelebrateSound();
       showEndDialog(resultMessage);
     }
@@ -631,28 +587,16 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
   void showEndDialog(String message) {
     showDialog(
-        context: context,
-        builder: (_) => AlertDialog(
-              backgroundColor: Colors.deepPurple.shade800,
-              title: Text(message,
-                  style: TextStyle(color: Colors.white, fontSize: 20)),
-              actions: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    resetBoard();
-                  },
-                  child: Text("Play Again"),
-                ),
-                TextButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    Navigator.pop(context);
-                  },
-                  child: Text("Home"),
-                ),
-              ],
-            ));
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: Colors.deepPurple.shade800,
+        title: Text(message, style: TextStyle(color: Colors.white, fontSize: 20)),
+        actions: [
+          TextButton(onPressed: () { Navigator.pop(context); resetBoard(); }, child: Text("Play Again")),
+          TextButton(onPressed: () { Navigator.pop(context); Navigator.pop(context); }, child: Text("Home")),
+        ],
+      ),
+    );
   }
 
   void resetBoard() {
@@ -663,7 +607,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       resultMessage = "";
       winningLine = [];
       if (widget.vsComputer && widget.playerSymbol == "O") {
-        Future.delayed(Duration(milliseconds: 500), () => computerMove());
+        Future.delayed(Duration(milliseconds: 300), () => computerMove());
       }
     });
   }
@@ -672,30 +616,18 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     bool isWinningCell = winningLine.contains(index);
     return GestureDetector(
       onTap: () => handleTap(index),
-      child: AnimatedContainer(
-        duration: Duration(milliseconds: 300),
+      child: Container(
         decoration: BoxDecoration(
           border: Border.all(color: Colors.white70),
-          color: isWinningCell
-              ? Colors.yellow.withOpacity(0.5)
-              : Colors.transparent,
-          boxShadow: [
-            BoxShadow(
-                color: Colors.black26, offset: Offset(2, 2), blurRadius: 2)
-          ],
+          color: isWinningCell ? Colors.yellow.withOpacity(0.5) : Colors.transparent,
         ),
         child: Center(
-          child: AnimatedScale(
-            duration: Duration(milliseconds: 200),
-            scale: board[index] != "" ? 1.2 : 1.0,
-            child: Text(
-              board[index],
-              style: TextStyle(
-                fontSize: 48,
-                color:
-                    board[index] == "X" ? Colors.redAccent : Colors.blueAccent,
-                fontWeight: FontWeight.bold,
-              ),
+          child: Text(
+            board[index],
+            style: TextStyle(
+              fontSize: 48,
+              fontWeight: FontWeight.bold,
+              color: board[index] == "X" ? Colors.redAccent : Colors.blueAccent,
             ),
           ),
         ),
@@ -708,59 +640,20 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     double gridSize = MediaQuery.of(context).size.width * 0.8;
     return Scaffold(
       appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(widget.vsComputer ? "Vs Computer" : "2 Players"),
-            Text("Turn: $currentTurn",
-                style: TextStyle(fontSize: 14, color: Colors.white70)),
-          ],
-        ),
+        title: Text(widget.vsComputer ? "Vs Computer" : "2 Players"),
         backgroundColor: Colors.deepPurple,
-        actions: [
-          Center(
-            child: Text(
-              "$playerScore : $opponentScore",
-              style: TextStyle(fontSize: 20, color: Colors.white),
-            ),
-          ),
-          IconButton(
-            onPressed: () {
-              setState(() {
-                playerScore = 0;
-                opponentScore = 0;
-              });
-            },
-            icon: Icon(Icons.restart_alt),
-          ),
-        ],
       ),
-      body: Stack(
-        children: [
-          gradientBg(),
-          // Particle effect
-          Positioned.fill(
-              child: AnimatedBuilder(
-                  animation: particleController,
-                  builder: (_, __) {
-                    return CustomPaint(
-                        painter: FloatingXO(particles: particles));
-                  })),
-          Center(
-            child: Container(
-              width: gridSize,
-              height: gridSize,
-              child: GridView.builder(
-                physics: NeverScrollableScrollPhysics(),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
-                ),
-                itemCount: 9,
-                itemBuilder: (_, index) => buildCell(index),
-              ),
-            ),
+      body: Center(
+        child: Container(
+          width: gridSize,
+          height: gridSize,
+          child: GridView.builder(
+            physics: NeverScrollableScrollPhysics(),
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3),
+            itemCount: 9,
+            itemBuilder: (_, index) => buildCell(index),
           ),
-        ],
+        ),
       ),
     );
   }
