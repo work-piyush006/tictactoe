@@ -25,17 +25,40 @@ class SplashScreen extends StatefulWidget {
   _SplashScreenState createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> {
+class _SplashScreenState extends State<SplashScreen>
+    with SingleTickerProviderStateMixin {
   AudioPlayer? bgmPlayer;
+  late AnimationController _controller;
+  late Animation<double> _animation;
+  List<Offset> particles = [];
+  Random random = Random();
 
   @override
   void initState() {
     super.initState();
+
+    // Background music
     bgmPlayer = AudioPlayer();
     bgmPlayer!.setReleaseMode(ReleaseMode.loop);
     bgmPlayer!.play(AssetSource("assets/bgm.mp3"));
 
-    Future.delayed(Duration(seconds: 2), () {
+    // Logo animation
+    _controller =
+        AnimationController(vsync: this, duration: Duration(seconds: 2));
+    _animation = Tween<double>(begin: 0.8, end: 1.2).animate(
+        CurvedAnimation(parent: _controller, curve: Curves.easeInOut))
+      ..addListener(() {
+        setState(() {});
+      });
+    _controller.repeat(reverse: true);
+
+    // Floating particles
+    for (int i = 0; i < 50; i++) {
+      particles.add(Offset(random.nextDouble() * 400, random.nextDouble() * 800));
+    }
+
+    // Navigate to HomeScreen after delay
+    Future.delayed(Duration(seconds: 3), () {
       Navigator.pushReplacement(
           context, MaterialPageRoute(builder: (_) => HomeScreen()));
     });
@@ -45,6 +68,7 @@ class _SplashScreenState extends State<SplashScreen> {
   void dispose() {
     bgmPlayer?.stop();
     bgmPlayer?.dispose();
+    _controller.dispose();
     super.dispose();
   }
 
@@ -62,16 +86,30 @@ class _SplashScreenState extends State<SplashScreen> {
               ),
             ),
           ),
-          Positioned.fill(child: CustomPaint(painter: FloatingXO())),
+          CustomPaint(painter: FloatingXO(particles: particles)),
           Center(
-            child: Text(
-              "X & O\nUltimate Battle ⚡",
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 36,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 2,
+            child: Transform.scale(
+              scale: _animation.value,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Image.asset(
+                    "assets/logo.png",
+                    width: 120,
+                    height: 120,
+                  ),
+                  SizedBox(height: 20),
+                  Text(
+                    "X & O\nUltimate Battle ⚡",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 36,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 2,
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -83,31 +121,26 @@ class _SplashScreenState extends State<SplashScreen> {
 
 // ================= FLOATING X/O PAINTER =================
 class FloatingXO extends CustomPainter {
-  final Random random = Random();
-  List<Offset> positions = [];
-  List<String> symbols = [];
-
-  FloatingXO() {
-    for (int i = 0; i < 30; i++) {
-      positions.add(Offset(random.nextDouble() * 400, random.nextDouble() * 800));
-      symbols.add(random.nextBool() ? "X" : "O");
-    }
-  }
+  final List<Offset> particles;
+  Random random = Random();
+  FloatingXO({required this.particles});
 
   @override
   void paint(Canvas canvas, Size size) {
-    for (int i = 0; i < positions.length; i++) {
+    for (var pos in particles) {
       TextPainter tp = TextPainter(
         text: TextSpan(
-            text: symbols[i],
+            text: random.nextBool() ? "X" : "O",
             style: TextStyle(
                 fontSize: 20,
-                color: symbols[i] == "X" ? Colors.red.shade200 : Colors.blue.shade200,
+                color: random.nextBool()
+                    ? Colors.red.shade200.withOpacity(0.7)
+                    : Colors.blue.shade200.withOpacity(0.7),
                 fontWeight: FontWeight.bold)),
         textDirection: TextDirection.ltr,
       );
       tp.layout();
-      tp.paint(canvas, positions[i]);
+      tp.paint(canvas, pos);
     }
   }
 
@@ -138,7 +171,15 @@ class HomeScreen extends StatelessWidget {
               ),
             ),
           ),
-          Positioned.fill(child: CustomPaint(painter: FloatingXO())),
+          Positioned.fill(
+            child: CustomPaint(
+                painter: FloatingXO(
+                    particles: List.generate(
+                        40,
+                        (index) => Offset(
+                            Random().nextDouble() * 400,
+                            Random().nextDouble() * 800))))),
+          ),
           Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -193,7 +234,9 @@ class SymbolSelectionScreen extends StatelessWidget {
           context,
           MaterialPageRoute(
               builder: (_) => GameScreen(
-                  vsComputer: false, playerSymbol: playerSymbol, difficulty: "Easy")));
+                  vsComputer: false,
+                  playerSymbol: playerSymbol,
+                  difficulty: "Easy")));
     }
   }
 
@@ -219,14 +262,16 @@ class SymbolSelectionScreen extends StatelessWidget {
                 ElevatedButton(
                   onPressed: () => startGame(context, "X"),
                   style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.redAccent, minimumSize: Size(100, 100)),
+                      backgroundColor: Colors.redAccent,
+                      minimumSize: Size(100, 100)),
                   child: Text("X", style: TextStyle(fontSize: 36)),
                 ),
                 SizedBox(width: 40),
                 ElevatedButton(
                   onPressed: () => startGame(context, "O"),
                   style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blueAccent, minimumSize: Size(100, 100)),
+                      backgroundColor: Colors.blueAccent,
+                      minimumSize: Size(100, 100)),
                   child: Text("O", style: TextStyle(fontSize: 36)),
                 ),
               ],
@@ -254,6 +299,7 @@ class DifficultyDialog extends StatelessWidget {
           difficultyButton(context, "Medium"),
           difficultyButton(context, "Hard"),
           difficultyButton(context, "Expert"),
+          difficultyButton(context, "Super Expert"),
         ],
       ),
     );
@@ -310,8 +356,9 @@ class _GameScreenState extends State<GameScreen> {
     }
   }
 
-  void playTapSound() => tapPlayer.play(AssetSource("assets/tap.mp3"));
-  void playCelebration() => celebrationPlayer.play(AssetSource("assets/celebration.mp3"));
+  void playTapSound() => tapPlayer.play(AssetSource("assets/Tap.mp3"));
+  void playCelebration() =>
+      celebrationPlayer.play(AssetSource("assets/Celebration.mp3"));
 
   void makeMove(int index) {
     if (board[index] != "") return;
@@ -323,7 +370,10 @@ class _GameScreenState extends State<GameScreen> {
 
     if (_checkWinner(board, currentPlayer)) {
       playCelebration();
-      if (currentPlayer == "X") scoreX++; else scoreO++;
+      if (currentPlayer == "X")
+        scoreX++;
+      else
+        scoreO++;
       showWinnerDialog("$currentPlayer Wins!");
       return;
     } else if (!board.contains("")) {
@@ -350,92 +400,155 @@ class _GameScreenState extends State<GameScreen> {
   int getComputerMove() {
     List<int> empty = [];
     for (int i = 0; i < 9; i++) if (board[i] == "") empty.add(i);
+
+    double smartChance;
+    switch (widget.difficulty) {
+      case "Easy":
+        smartChance = 0.4;
+        break;
+      case "Medium":
+        smartChance = 0.7;
+        break;
+      case "Hard":
+        smartChance = 0.9;
+        break;
+      case "Expert":
+        smartChance = 0.99;
+        break;
+      case "Super Expert":
+        smartChance = 1.0;
+        break;
+      default:
+        smartChance = 0.9;
+    }
+
+    String opponent = widget.playerSymbol;
+
+    for (int i in empty) {
+      List<String> temp = List.from(board);
+      temp[i] = currentPlayer;
+      if (_checkWinner(temp, currentPlayer)) return i;
+    }
+
+    for (int i in empty) {
+      List<String> temp = List.from(board);
+      temp[i] = opponent;
+      if (_checkWinner(temp, opponent)) return i;
+    }
+
+    if (Random().nextDouble() < smartChance) {
+      if (empty.contains(4)) return 4;
+      List<int> corners = [0, 2, 6, 8];
+      List<int> availCorners =
+          empty.where((i) => corners.contains(i)).toList();
+      if (availCorners.isNotEmpty)
+        return availCorners[random.nextInt(availCorners.length)];
+      List<int> sides = [1, 3, 5, 7];
+      List<int> availSides = empty.where((i) => sides.contains(i)).toList();
+      if (availSides.isNotEmpty)
+        return availSides[random.nextInt(availSides.length)];
+    }
+
     return empty[random.nextInt(empty.length)];
   }
 
   bool _checkWinner(List<String> b, String player) {
     List<List<int>> wins = [
-      [0,1,2],[3,4,5],[6,7,8],
-      [0,3,6],[1,4,7],[2,5,8],
-      [0,4,8],[2,4,6]
+      [0, 1, 2],
+      [3, 4, 5],
+      [6, 7, 8],
+      [0, 3, 6],
+      [1, 4, 7],
+      [2, 5, 8],
+      [0, 4, 8],
+      [2, 4, 6]
     ];
     for (var line in wins) {
-      if (b[line[0]]==player && b[line[1]]==player && b[line[2]]==player) return true;
+      if (b[line[0]] == player && b[line[1]] == player && b[line[2]] == player)
+        return true;
     }
     return false;
   }
 
-  void showWinnerDialog(String title){
+  void showWinnerDialog(String title) {
     showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: Text(title),
-        content: Text("Scoreboard:\nX: $scoreX | O: $scoreO | Draws: $draws"),
-        actions: [
-          TextButton(
-            onPressed: (){
-              setState((){
-                board = List.filled(9,"");
-                currentPlayer = "X";
-                if(widget.vsComputer && widget.playerSymbol!="X"){
-                  Future.delayed(Duration(milliseconds:500), ()=>computerMove());
-                }
-              });
-              Navigator.pop(context);
-            },
-            child: Text("Replay"),
-          ),
-          TextButton(
-            onPressed: (){
-              Navigator.pushReplacement(context, MaterialPageRoute(builder: (_)=>HomeScreen()));
-            },
-            child: Text("Home"),
-          )
-        ],
-      )
-    );
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => AlertDialog(
+              title: Text(title),
+              content: Text(
+                  "Scoreboard:\nX: $scoreX | O: $scoreO | Draws: $draws"),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      board = List.filled(9, "");
+                      currentPlayer = "X";
+                      if (widget.vsComputer && widget.playerSymbol != "X") {
+                        Future.delayed(
+                            Duration(milliseconds: 500), () => computerMove());
+                      }
+                    });
+                    Navigator.pop(context);
+                  },
+                  child: Text("Replay"),
+                ),
+                TextButton(
+                  onPressed: () {
+                    Navigator.pushReplacement(context,
+                        MaterialPageRoute(builder: (_) => HomeScreen()));
+                  },
+                  child: Text("Home"),
+                ),
+              ],
+            ));
   }
 
   @override
-  Widget build(BuildContext context){
+  Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.deepPurple.shade800,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children:[
-            Text(widget.vsComputer?"Your Turn: $currentPlayer":"Player: $currentPlayer",
-              style: TextStyle(color: Colors.white, fontSize: 24)),
-            SizedBox(height:10),
-            Text("Scoreboard: X:$scoreX | O:$scoreO | Draws:$draws",
-              style: TextStyle(color: Colors.yellowAccent, fontSize:18)),
-            SizedBox(height:20),
-            Container(
-              width:300,
-              height:300,
-              child: GridView.builder(
-                itemCount:9,
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount:3),
-                itemBuilder: (context,index){
-                  return GestureDetector(
-                    onTap: ()=>makeMove(index),
-                    child: Container(
-                      decoration: BoxDecoration(border: Border.all(color: Colors.white70)),
-                      child: Center(
-                        child: Text(board[index],
-                          style: TextStyle(
-                            color: board[index]=="X"?Colors.redAccent:Colors.blueAccent,
-                            fontSize:48,fontWeight: FontWeight.bold
-                          ),
-                        ),
+      backgroundColor: Colors.deepPurple.shade900,
+      appBar: AppBar(
+        title: Text("Tic Tac Toe"),
+        backgroundColor: Colors.deepPurple,
+        centerTitle: true,
+      ),
+      body: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: EdgeInsets.all(10),
+            child: GridView.builder(
+              shrinkWrap: true,
+              gridDelegate:
+                  SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3),
+              itemCount: 9,
+              itemBuilder: (context, index) {
+                return GestureDetector(
+                  onTap: () {
+                    makeMove(index);
+                  },
+                  child: Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.white),
+                    ),
+                    child: Center(
+                      child: Text(
+                        board[index],
+                        style: TextStyle(
+                            fontSize: 64,
+                            color: board[index] == "X"
+                                ? Colors.redAccent
+                                : Colors.blueAccent,
+                            fontWeight: FontWeight.bold),
                       ),
                     ),
-                  );
-                }
-              ),
-            )
-          ]
-        ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
       ),
     );
   }
