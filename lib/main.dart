@@ -457,7 +457,7 @@ class GameScreen extends StatefulWidget {
   _GameScreenState createState() => _GameScreenState();
 }
 
-class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
+class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   late List<String> board;
   late String currentTurn;
   late String opponentSymbol;
@@ -469,59 +469,50 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   final AudioPlayer tapPlayer = AudioPlayer();
   final AudioPlayer celebratePlayer = AudioPlayer();
 
+  late AnimationController particleController;
+  List<Offset> particles = [];
+  Random random = Random();
+
+  List<int> winningLine = [];
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
 
     board = List.filled(9, "");
     currentTurn = "X";
     opponentSymbol = widget.playerSymbol == "X" ? "O" : "X";
 
-    // First move if player chose O
+    // Particle animation controller
+    particleController =
+        AnimationController(vsync: this, duration: Duration(seconds: 2))
+          ..repeat(reverse: true);
+
+    for (int i = 0; i < 50; i++) {
+      particles.add(
+        Offset(random.nextDouble() * 320, random.nextDouble() * 320),
+      );
+    }
+
     if (widget.vsComputer && widget.playerSymbol == "O") {
-      Future.delayed(Duration(milliseconds: 500), () {
-        computerMove();
-      });
+      Future.delayed(Duration(milliseconds: 500), () => computerMove());
     }
   }
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
+    particleController.dispose();
     tapPlayer.dispose();
     celebratePlayer.dispose();
     super.dispose();
   }
 
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused) {
-      Navigator.pop(context);
-    }
-  }
-
   void playTapSound() async {
-    await tapPlayer.play(AssetSource("Tap.mp3"));
+    await tapPlayer.play(AssetSource("Tap.mp3"), mode: PlayerMode.lowLatency);
   }
 
   void playCelebrateSound() async {
     await celebratePlayer.play(AssetSource("Celebration.mp3"));
-  }
-
-  void resetBoard() {
-    setState(() {
-      board = List.filled(9, "");
-      currentTurn = "X";
-      gameOver = false;
-      resultMessage = "";
-
-      if (widget.vsComputer && widget.playerSymbol == "O") {
-        Future.delayed(Duration(milliseconds: 500), () {
-          computerMove();
-        });
-      }
-    });
   }
 
   void handleTap(int index) {
@@ -545,13 +536,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   void computerMove() {
     List<int> empty = [];
-    for (int i = 0; i < 9; i++) {
-      if (board[i] == "") empty.add(i);
-    }
+    for (int i = 0; i < 9; i++) if (board[i] == "") empty.add(i);
     if (empty.isEmpty) return;
 
     int move = getBestMove(widget.difficulty);
-
     setState(() {
       board[move] = currentTurn;
       playTapSound();
@@ -562,23 +550,18 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   int getBestMove(String diff) {
     List<int> empty = [];
-    for (int i = 0; i < 9; i++) {
-      if (board[i] == "") empty.add(i);
-    }
+    for (int i = 0; i < 9; i++) if (board[i] == "") empty.add(i);
 
     if (diff == "Easy") return empty[Random().nextInt(empty.length)];
-
     if (diff == "Medium") {
       if (Random().nextBool()) return empty[Random().nextInt(empty.length)];
       return findWinningMove(currentTurn) ?? empty[0];
     }
-
     if (diff == "Hard" || diff == "Expert" || diff == "Super Expert") {
       return findWinningMove(currentTurn) ??
           findWinningMove(widget.playerSymbol) ??
           empty[Random().nextInt(empty.length)];
     }
-
     return empty[0];
   }
 
@@ -626,6 +609,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
           board[line[1]] == board[line[2]]) {
         gameOver = true;
         resultMessage = "${board[line[0]]} Wins!";
+        winningLine = line;
         playCelebrateSound();
         if (board[line[0]] == widget.playerSymbol) {
           playerScore++;
@@ -671,20 +655,47 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
             ));
   }
 
+  void resetBoard() {
+    setState(() {
+      board = List.filled(9, "");
+      currentTurn = "X";
+      gameOver = false;
+      resultMessage = "";
+      winningLine = [];
+      if (widget.vsComputer && widget.playerSymbol == "O") {
+        Future.delayed(Duration(milliseconds: 500), () => computerMove());
+      }
+    });
+  }
+
   Widget buildCell(int index) {
+    bool isWinningCell = winningLine.contains(index);
     return GestureDetector(
       onTap: () => handleTap(index),
-      child: Container(
+      child: AnimatedContainer(
+        duration: Duration(milliseconds: 300),
         decoration: BoxDecoration(
           border: Border.all(color: Colors.white70),
+          color: isWinningCell
+              ? Colors.yellow.withOpacity(0.5)
+              : Colors.transparent,
+          boxShadow: [
+            BoxShadow(
+                color: Colors.black26, offset: Offset(2, 2), blurRadius: 2)
+          ],
         ),
         child: Center(
-          child: Text(
-            board[index],
-            style: TextStyle(
-              fontSize: 48,
-              color: board[index] == "X" ? Colors.redAccent : Colors.blueAccent,
-              fontWeight: FontWeight.bold,
+          child: AnimatedScale(
+            duration: Duration(milliseconds: 200),
+            scale: board[index] != "" ? 1.2 : 1.0,
+            child: Text(
+              board[index],
+              style: TextStyle(
+                fontSize: 48,
+                color:
+                    board[index] == "X" ? Colors.redAccent : Colors.blueAccent,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ),
         ),
@@ -694,41 +705,62 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    return WillPopScope(
-      onWillPop: () async => true,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(widget.vsComputer ? "Vs Computer" : "2 Players"),
-          backgroundColor: Colors.deepPurple,
-          actions: [
-            Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Center(
-                child: Text(
-                  "$playerScore : $opponentScore",
-                  style: TextStyle(fontSize: 20, color: Colors.white),
-                ),
-              ),
-            ),
-          ],
-        ),
-        body: Stack(
+    double gridSize = MediaQuery.of(context).size.width * 0.8;
+    return Scaffold(
+      appBar: AppBar(
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            gradientBg(),
-            Center(
-              child: Container(
-                width: 320,
-                height: 320,
-                child: GridView.builder(
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 3),
-                  itemBuilder: (_, index) => buildCell(index),
-                  itemCount: 9,
-                ),
-              ),
-            ),
+            Text(widget.vsComputer ? "Vs Computer" : "2 Players"),
+            Text("Turn: $currentTurn",
+                style: TextStyle(fontSize: 14, color: Colors.white70)),
           ],
         ),
+        backgroundColor: Colors.deepPurple,
+        actions: [
+          Center(
+            child: Text(
+              "$playerScore : $opponentScore",
+              style: TextStyle(fontSize: 20, color: Colors.white),
+            ),
+          ),
+          IconButton(
+            onPressed: () {
+              setState(() {
+                playerScore = 0;
+                opponentScore = 0;
+              });
+            },
+            icon: Icon(Icons.restart_alt),
+          ),
+        ],
+      ),
+      body: Stack(
+        children: [
+          gradientBg(),
+          // Particle effect
+          Positioned.fill(
+              child: AnimatedBuilder(
+                  animation: particleController,
+                  builder: (_, __) {
+                    return CustomPaint(
+                        painter: FloatingXO(particles: particles));
+                  })),
+          Center(
+            child: Container(
+              width: gridSize,
+              height: gridSize,
+              child: GridView.builder(
+                physics: NeverScrollableScrollPhysics(),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 3,
+                ),
+                itemCount: 9,
+                itemBuilder: (_, index) => buildCell(index),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
