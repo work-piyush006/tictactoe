@@ -57,7 +57,8 @@ class _SplashScreenState extends State<SplashScreen>
 
     // Floating particles
     for (int i = 0; i < 50; i++) {
-      particles.add(Offset(random.nextDouble() * 400, random.nextDouble() * 800));
+      particles.add(
+          Offset(random.nextDouble() * 400, random.nextDouble() * 800));
     }
 
     // Navigate to HomeScreen after delay
@@ -142,11 +143,12 @@ class FloatingXO extends CustomPainter {
         text: TextSpan(
           text: random.nextBool() ? "X" : "O",
           style: TextStyle(
-              fontSize: 20,
-              color: random.nextBool()
-                  ? Colors.red.shade200.withOpacity(0.7)
-                  : Colors.blue.shade200.withOpacity(0.7),
-              fontWeight: FontWeight.bold),
+            fontSize: 20,
+            color: random.nextBool()
+                ? Colors.red.shade200.withOpacity(0.7)
+                : Colors.blue.shade200.withOpacity(0.7),
+            fontWeight: FontWeight.bold,
+          ),
         ),
         textDirection: TextDirection.ltr,
       );
@@ -163,9 +165,11 @@ class FloatingXO extends CustomPainter {
 class HomeScreen extends StatelessWidget {
   void navigateToGame(BuildContext context, bool vsComputer) {
     Navigator.push(
-        context,
-        MaterialPageRoute(
-            builder: (_) => SymbolSelectionScreen(vsComputer: vsComputer)));
+      context,
+      MaterialPageRoute(
+        builder: (_) => SymbolSelectionScreen(vsComputer: vsComputer),
+      ),
+    );
   }
 
   @override
@@ -184,12 +188,16 @@ class HomeScreen extends StatelessWidget {
           ),
           Positioned.fill(
             child: CustomPaint(
-                painter: FloatingXO(
-                    particles: List.generate(
-                        40,
-                        (index) => Offset(
-                            Random().nextDouble() * 400,
-                            Random().nextDouble() * 800))))),
+              painter: FloatingXO(
+                particles: List.generate(
+                  40,
+                  (index) => Offset(
+                    Random().nextDouble() * 400,
+                    Random().nextDouble() * 800,
+                  ),
+                ),
+              ),
+            ),
           ),
           Center(
             child: Column(
@@ -198,9 +206,10 @@ class HomeScreen extends StatelessWidget {
                 Text(
                   "Choose Mode to Start 🎮",
                   style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white),
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
                 SizedBox(height: 40),
                 ElevatedButton(
@@ -242,12 +251,15 @@ class SymbolSelectionScreen extends StatelessWidget {
       );
     } else {
       Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-              builder: (_) => GameScreen(
-                  vsComputer: false,
-                  playerSymbol: playerSymbol,
-                  difficulty: "Easy")));
+        context,
+        MaterialPageRoute(
+          builder: (_) => GameScreen(
+            vsComputer: false,
+            playerSymbol: playerSymbol,
+            difficulty: "Easy",
+          ),
+        ),
+      );
     }
   }
 
@@ -262,9 +274,10 @@ class SymbolSelectionScreen extends StatelessWidget {
             Text(
               "Choose Your Symbol",
               style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold),
+                color: Colors.white,
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             SizedBox(height: 30),
             Row(
@@ -273,16 +286,18 @@ class SymbolSelectionScreen extends StatelessWidget {
                 ElevatedButton(
                   onPressed: () => startGame(context, "X"),
                   style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.redAccent,
-                      minimumSize: Size(100, 100)),
+                    backgroundColor: Colors.redAccent,
+                    minimumSize: Size(100, 100),
+                  ),
                   child: Text("X", style: TextStyle(fontSize: 36)),
                 ),
                 SizedBox(width: 40),
                 ElevatedButton(
                   onPressed: () => startGame(context, "O"),
                   style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.blueAccent,
-                      minimumSize: Size(100, 100)),
+                    backgroundColor: Colors.blueAccent,
+                    minimumSize: Size(100, 100),
+                  ),
                   child: Text("O", style: TextStyle(fontSize: 36)),
                 ),
               ],
@@ -321,12 +336,15 @@ class DifficultyDialog extends StatelessWidget {
       onPressed: () {
         Navigator.pop(context);
         Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-                builder: (_) => GameScreen(
-                    vsComputer: true,
-                    playerSymbol: playerSymbol,
-                    difficulty: difficulty)));
+          context,
+          MaterialPageRoute(
+            builder: (_) => GameScreen(
+              vsComputer: true,
+              playerSymbol: playerSymbol,
+              difficulty: difficulty,
+            ),
+          ),
+        );
       },
       child: Text(difficulty),
     );
@@ -510,8 +528,8 @@ class _GameScreenState extends State<GameScreen> {
           ),
           TextButton(
             onPressed: () {
-              Navigator.pushReplacement(context,
-                  MaterialPageRoute(builder: (_) => HomeScreen()));
+              Navigator.pushReplacement(
+                  context, MaterialPageRoute(builder: (_) => HomeScreen()));
             },
             child: Text("Home"),
           ),
