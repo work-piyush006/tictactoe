@@ -479,6 +479,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
   final AudioPlayer tapPlayer = AudioPlayer();
   final AudioPlayer celebratePlayer = AudioPlayer();
+  final AudioPlayer errorPlayer = AudioPlayer();
   Random random = Random();
 
   @override
@@ -497,6 +498,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   void dispose() {
     tapPlayer.dispose();
     celebratePlayer.dispose();
+    errorPlayer.dispose();
     super.dispose();
   }
 
@@ -508,8 +510,30 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     await celebratePlayer.play(AssetSource("Celebration.mp3"));
   }
 
+  void playErrorSound() async {
+    await errorPlayer.play(AssetSource("error.mp3"), mode: PlayerMode.lowLatency);
+  }
+
   void handleTap(int index) {
-    if (gameOver || board[index] != "") return;
+    if (gameOver) return;
+
+    // Wait for turn warning
+    if (currentTurn != widget.playerSymbol) {
+      playErrorSound();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Wait for your turn!"))
+      );
+      return;
+    }
+
+    // Filled box warning
+    if (board[index] != "") {
+      playErrorSound();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Box already filled!"))
+      );
+      return;
+    }
 
     setState(() {
       board[index] = currentTurn;
@@ -519,7 +543,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     });
 
     if (widget.vsComputer && !gameOver && currentTurn == opponentSymbol) {
-      Future.delayed(Duration(milliseconds: 300), () => computerMove());
+      Future.delayed(Duration(milliseconds: 300 + random.nextInt(400)), () => computerMove());
     }
   }
 
@@ -589,7 +613,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         board[i] = "";
       }
     }
-    // Random
     return randomMove();
   }
 
@@ -611,7 +634,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         bestMove = i;
       }
     }
-
     return bestMove;
   }
 
@@ -646,12 +668,12 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     }
   }
 
-// ================= WINNER CHECK =================
+  // ================= WINNER CHECK =================
   String checkWinnerReturn() {
     List<List<int>> wins = [
-      [0,1,2],[3,4,5],[6,7,8], // rows
-      [0,3,6],[1,4,7],[2,5,8], // columns
-      [0,4,8],[2,4,6]           // diagonals
+      [0,1,2],[3,4,5],[6,7,8],
+      [0,3,6],[1,4,7],[2,5,8],
+      [0,4,8],[2,4,6]
     ];
 
     for (var line in wins) {
@@ -743,7 +765,11 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
   Color getTileColor(int index) {
     if (winningLine.contains(index)) return Colors.greenAccent.shade400;
-    return Colors.white;
+    return Colors.transparent;
+  }
+
+  Color getSymbolColor(String symbol) {
+    return symbol == "X" ? Colors.blue : Colors.red;
   }
 
   @override
@@ -756,32 +782,53 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         backgroundColor: Colors.deepPurple,
       ),
       body: Container(
-        padding: EdgeInsets.all(8),
-        color: Colors.deepPurple.shade50,
-        child: GridView.builder(
-          itemCount: 9,
-          gridDelegate:
-              SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3),
-          itemBuilder: (_, index) => GestureDetector(
-            onTap: () => handleTap(index),
-            child: Container(
-              margin: EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                  color: getTileColor(index),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.deepPurple, width: 2)),
-              child: Center(
-                  child: Text(
-                board[index],
-                style: TextStyle(
-                    fontSize: 48,
-                    fontWeight: FontWeight.bold,
-                    color: board[index] == "X"
-                        ? Colors.red
-                        : Colors.blue),
-              )),
-            ),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.deepPurple, Colors.purpleAccent],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
+        ),
+        padding: EdgeInsets.all(8),
+        child: Column(
+          children: [
+            SizedBox(height: 20),
+            Text(
+              currentTurn == widget.playerSymbol ? "Your Turn" : widget.vsComputer ? "Computer's Turn" : "$currentTurn's Turn",
+              style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: currentTurn == widget.playerSymbol ? Colors.greenAccent : Colors.redAccent),
+            ),
+            SizedBox(height: 16),
+            Expanded(
+              child: GridView.builder(
+                itemCount: 9,
+                gridDelegate:
+                    SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3),
+                itemBuilder: (_, index) => GestureDetector(
+                  onTap: () => handleTap(index),
+                  child: Container(
+                    margin: EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: getTileColor(index),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.deepPurple, width: 2),
+                    ),
+                    child: Center(
+                      child: Text(
+                        board[index],
+                        style: TextStyle(
+                            color: getSymbolColor(board[index]),
+                            fontSize: 50,
+                            fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
