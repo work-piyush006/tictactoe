@@ -165,7 +165,8 @@ class HomeScreen extends StatefulWidget {
   _HomeScreenState createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateMixin, WidgetsBindingObserver {
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   late AnimationController _controller;
   List<Offset> particles = [];
   Random random = Random();
@@ -176,13 +177,20 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     super.initState();
     WidgetsBinding.instance.addObserver(this);
 
-    _controller = AnimationController(vsync: this, duration: Duration(seconds: 2))
-      ..repeat(reverse: true);
+    // Particle animation controller
+    _controller =
+        AnimationController(vsync: this, duration: Duration(seconds: 2))
+          ..repeat(reverse: true);
 
+    // Random particle positions
     for (int i = 0; i < 40; i++) {
-      particles.add(Offset(random.nextDouble() * 400, random.nextDouble() * 800));
+      particles.add(
+        Offset(random.nextDouble() * MediaQuery.of(context).size.width,
+            random.nextDouble() * MediaQuery.of(context).size.height),
+      );
     }
 
+    // Start BGM
     widget.bgmPlayer.resume();
   }
 
@@ -193,6 +201,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     super.dispose();
   }
 
+  // BGM pause/resume on minimize
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused) {
@@ -218,7 +227,8 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => SymbolSelectionScreen(vsComputer: vsComputer, bgmPlayer: widget.bgmPlayer),
+        builder: (_) =>
+            SymbolSelectionScreen(vsComputer: vsComputer, bgmPlayer: widget.bgmPlayer),
       ),
     ).then((_) {
       if (isBgmOn) widget.bgmPlayer.resume();
@@ -231,7 +241,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
       body: Stack(
         children: [
           gradientBg(),
-          Positioned.fill(child: CustomPaint(painter: FloatingXO(particles: particles))),
+          // Floating X/O particles
+          Positioned.fill(
+              child: CustomPaint(painter: FloatingXO(particles: particles))),
           Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -240,7 +252,9 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   "Choose Your Mode To Play 🎮",
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                      color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
+                      color: Colors.white,
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold),
                 ),
                 SizedBox(height: 50),
                 ElevatedButton(
@@ -248,9 +262,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   style: ElevatedButton.styleFrom(
                       minimumSize: Size(220, 50),
                       backgroundColor: Colors.greenAccent.shade700,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12))),
                   child: Text("Play vs Computer",
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                      style:
+                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                 ),
                 SizedBox(height: 20),
                 ElevatedButton(
@@ -258,20 +274,24 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                   style: ElevatedButton.styleFrom(
                       minimumSize: Size(220, 50),
                       backgroundColor: Colors.blueAccent.shade700,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12))),
                   child: Text("Play with Friends",
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                      style:
+                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
           ),
+          // Top buttons: BGM & Info
           Positioned(
             top: 40,
             right: 20,
             child: Row(
               children: [
                 IconButton(
-                  icon: Icon(isBgmOn ? Icons.volume_up : Icons.volume_off, color: Colors.white),
+                  icon: Icon(isBgmOn ? Icons.volume_up : Icons.volume_off,
+                      color: Colors.white),
                   onPressed: toggleBgm,
                 ),
                 SizedBox(width: 10),
@@ -282,9 +302,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
                         context: context,
                         builder: (_) => AlertDialog(
                               backgroundColor: Colors.deepPurple.shade800,
-                              title: Text("About", style: TextStyle(color: Colors.white)),
+                              title:
+                                  Text("About", style: TextStyle(color: Colors.white)),
                               content: Text(
-                                  "Made by G A PRODUCTION\nVersion 1.0.0\nTips: Tap cells to play",
+                                  "Made by G A PRODUCTION\nVersion 1.0.0\nSuggestion: Try to Win Against Our SuperExpert Mode ",
                                   style: TextStyle(color: Colors.white70)),
                               actions: [
                                 TextButton(
@@ -426,10 +447,11 @@ class GameScreen extends StatefulWidget {
   final String playerSymbol;
   final String difficulty;
 
-  GameScreen(
-      {required this.vsComputer,
-      required this.playerSymbol,
-      required this.difficulty});
+  GameScreen({
+    required this.vsComputer,
+    required this.playerSymbol,
+    required this.difficulty,
+  });
 
   @override
   _GameScreenState createState() => _GameScreenState();
@@ -451,9 +473,17 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+
     board = List.filled(9, "");
     currentTurn = "X";
     opponentSymbol = widget.playerSymbol == "X" ? "O" : "X";
+
+    // First move if player chose O
+    if (widget.vsComputer && widget.playerSymbol == "O") {
+      Future.delayed(Duration(milliseconds: 500), () {
+        computerMove();
+      });
+    }
   }
 
   @override
@@ -467,7 +497,6 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused) {
-      // App minimized, close game
       Navigator.pop(context);
     }
   }
@@ -486,17 +515,17 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       currentTurn = "X";
       gameOver = false;
       resultMessage = "";
+
+      if (widget.vsComputer && widget.playerSymbol == "O") {
+        Future.delayed(Duration(milliseconds: 500), () {
+          computerMove();
+        });
+      }
     });
   }
 
   void handleTap(int index) {
-    if (gameOver) return;
-    if (board[index] != "") return;
-
-    if ((widget.vsComputer && currentTurn != widget.playerSymbol)) {
-      _showTurnDialog();
-      return;
-    }
+    if (gameOver || board[index] != "") return;
 
     setState(() {
       board[index] = currentTurn;
@@ -506,9 +535,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     });
 
     if (widget.vsComputer && !gameOver && currentTurn == opponentSymbol) {
-      Future.delayed(Duration(milliseconds: 700), () {
-        computerMove();
-      });
+      Future.delayed(Duration(milliseconds: 700), () => computerMove());
     }
   }
 
@@ -517,7 +544,14 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   }
 
   void computerMove() {
+    List<int> empty = [];
+    for (int i = 0; i < 9; i++) {
+      if (board[i] == "") empty.add(i);
+    }
+    if (empty.isEmpty) return;
+
     int move = getBestMove(widget.difficulty);
+
     setState(() {
       board[move] = currentTurn;
       playTapSound();
@@ -531,16 +565,20 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     for (int i = 0; i < 9; i++) {
       if (board[i] == "") empty.add(i);
     }
+
     if (diff == "Easy") return empty[Random().nextInt(empty.length)];
+
     if (diff == "Medium") {
       if (Random().nextBool()) return empty[Random().nextInt(empty.length)];
       return findWinningMove(currentTurn) ?? empty[0];
     }
-    if (diff == "Hard") {
+
+    if (diff == "Hard" || diff == "Expert" || diff == "Super Expert") {
       return findWinningMove(currentTurn) ??
           findWinningMove(widget.playerSymbol) ??
           empty[Random().nextInt(empty.length)];
     }
+
     return empty[0];
   }
 
@@ -555,6 +593,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       [0, 4, 8],
       [2, 4, 6]
     ];
+
     for (var line in wins) {
       if (board[line[0]] == symbol &&
           board[line[1]] == symbol &&
@@ -624,31 +663,12 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                 TextButton(
                   onPressed: () {
                     Navigator.pop(context);
-                    Navigator.pop(context); // back to home
+                    Navigator.pop(context);
                   },
                   child: Text("Home"),
                 ),
               ],
             ));
-  }
-
-  void _showTurnDialog() {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: Colors.deepPurple.shade700,
-        title: Text("Wait for your turn 💢",
-            style: TextStyle(color: Colors.white, fontSize: 18)),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-            },
-            child: Text("OK", style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
   }
 
   Widget buildCell(int index) {
@@ -675,10 +695,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   @override
   Widget build(BuildContext context) {
     return WillPopScope(
-      onWillPop: () async {
-        // close game on back button
-        return true;
-      },
+      onWillPop: () async => true,
       child: Scaffold(
         appBar: AppBar(
           title: Text(widget.vsComputer ? "Vs Computer" : "2 Players"),
@@ -688,7 +705,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
               padding: const EdgeInsets.all(12.0),
               child: Center(
                 child: Text(
-                  "${playerScore} : ${opponentScore}",
+                  "$playerScore : $opponentScore",
                   style: TextStyle(fontSize: 20, color: Colors.white),
                 ),
               ),
