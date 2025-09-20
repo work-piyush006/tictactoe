@@ -403,7 +403,7 @@ class TwoPlayerSymbolSelectionScreen extends StatelessWidget {
   }
 }
 
-// ================= SETTINGS SCREEN =================
+// ================= SETTINGS SCREEN 
 class SettingsScreen extends StatefulWidget {
   final AudioPlayer bgmPlayer;
   SettingsScreen({required this.bgmPlayer});
@@ -511,16 +511,16 @@ class AboutScreen extends StatelessWidget {
   }
 }
 
-// ================= FULL GAME SCREEN =================
+// ================= FULL IMPROVED GAME SCREEN =================
 class GameScreen extends StatefulWidget {
   final bool vsComputer;
-  final String symbol;
-  final String difficulty;
+  final String playerSymbol;
+  final String? difficulty;
 
   GameScreen({
     required this.vsComputer,
-    required this.symbol,
-    required this.difficulty,
+    required this.playerSymbol,
+    this.difficulty,
   });
 
   @override
@@ -537,7 +537,7 @@ class _GameScreenState extends State<GameScreen>
   late String playerSymbol;
   late String computerSymbol;
 
-  // Audio players
+  // Audio
   AudioPlayer tapPlayer = AudioPlayer();
   AudioPlayer celebrationPlayer = AudioPlayer();
 
@@ -548,8 +548,10 @@ class _GameScreenState extends State<GameScreen>
   @override
   void initState() {
     super.initState();
-    playerSymbol = widget.symbol;
+
+    playerSymbol = widget.playerSymbol;
     computerSymbol = (playerSymbol == "X") ? "O" : "X";
+    currentPlayer = "X";
 
     _winnerController =
         AnimationController(vsync: this, duration: Duration(milliseconds: 600));
@@ -559,10 +561,9 @@ class _GameScreenState extends State<GameScreen>
       curve: Curves.easeInOut,
     ));
 
-    // Computer first move if player chose O
-    if (widget.vsComputer && playerSymbol == "O") {
-      Future.delayed(Duration(milliseconds: 500 + Random().nextInt(200)),
-          computerMove);
+    // Computer first move if player chose "O" in 1 player mode
+    if (widget.vsComputer && currentPlayer != playerSymbol) {
+      Future.delayed(Duration(milliseconds: 500), computerMove);
     }
   }
 
@@ -580,14 +581,11 @@ class _GameScreenState extends State<GameScreen>
     await celebrationPlayer.play(AssetSource("Celebration.mp3"));
   }
 
-  void handleTap(int index) async {
+  void handleTap(int index) {
     if (board[index] != '' || winner != null) return;
 
-    if (widget.vsComputer && currentPlayer != playerSymbol) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("Wait for your turn!")));
-      return;
-    }
+    // 1 player mode: restrict turn
+    if (widget.vsComputer && currentPlayer != playerSymbol) return;
 
     setState(() {
       board[index] = currentPlayer;
@@ -597,7 +595,10 @@ class _GameScreenState extends State<GameScreen>
       if (winner == null) switchTurn();
     });
 
-    if (widget.vsComputer && currentPlayer == computerSymbol && winner == null) {
+    // Computer move
+    if (widget.vsComputer &&
+        currentPlayer == computerSymbol &&
+        winner == null) {
       Future.delayed(Duration(milliseconds: 400 + Random().nextInt(300)),
           computerMove);
     }
@@ -607,7 +608,7 @@ class _GameScreenState extends State<GameScreen>
     currentPlayer = (currentPlayer == "X") ? "O" : "X";
   }
 
-  void checkWinner() async {
+  void checkWinner() {
     List<List<int>> winPatterns = [
       [0, 1, 2],
       [3, 4, 5],
@@ -623,14 +624,13 @@ class _GameScreenState extends State<GameScreen>
       String a = board[pattern[0]];
       String b = board[pattern[1]];
       String c = board[pattern[2]];
-
       if (a != '' && a == b && b == c) {
         setState(() {
           winner = a;
           _winnerController.repeat(reverse: true);
           playCelebrationSound();
         });
-        await updateScores();
+        updateScores();
         return;
       }
     }
@@ -640,11 +640,11 @@ class _GameScreenState extends State<GameScreen>
         winner = "Draw";
         playCelebrationSound();
       });
-      await updateScores();
+      updateScores();
     }
   }
 
-  Future<void> updateScores() async {
+  void updateScores() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     if (winner == playerSymbol) {
       prefs.setInt("playerWins", (prefs.getInt("playerWins") ?? 0) + 1);
@@ -756,10 +756,26 @@ class _GameScreenState extends State<GameScreen>
     return '';
   }
 
+  void restartGame() {
+    setState(() {
+      board = List.filled(9, '');
+      currentPlayer = "X";
+      winner = null;
+      moveCount = 0;
+    });
+
+    if (widget.vsComputer && playerSymbol == "O") {
+      Future.delayed(Duration(milliseconds: 500), computerMove);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Tic Tac Toe")),
+      appBar: AppBar(
+        title: Text("Tic Tac Toe"),
+        backgroundColor: Colors.deepPurple,
+      ),
       body: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -824,20 +840,7 @@ class _GameScreenState extends State<GameScreen>
           ),
           SizedBox(height: 20),
           ElevatedButton(
-            onPressed: () {
-              setState(() {
-                board = List.filled(9, '');
-                currentPlayer = "X";
-                winner = null;
-                moveCount = 0;
-              });
-
-              if (widget.vsComputer && playerSymbol == "O") {
-                Future.delayed(
-                    Duration(milliseconds: 500 + Random().nextInt(200)),
-                    computerMove);
-              }
-            },
+            onPressed: restartGame,
             style: ElevatedButton.styleFrom(
               minimumSize: Size(150, 50),
               backgroundColor: Colors.deepPurpleAccent,
