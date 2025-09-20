@@ -579,7 +579,7 @@ class _GameScreenState extends State<GameScreen> {
           .showSnackBar(SnackBar(content: Text("It's a Draw!")));
       await saveScore(draw: true);
     } else {
-      playSfx("win.mp3");
+      playSfx("Celebration.mp3");
       confettiController.play();
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text("$winner Wins!")));
