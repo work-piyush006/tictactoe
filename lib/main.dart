@@ -36,10 +36,12 @@ class _SplashScreenState extends State<SplashScreen>
   void initState() {
     super.initState();
 
+    // Background Music
     bgmPlayer = AudioPlayer();
     bgmPlayer.setReleaseMode(ReleaseMode.loop);
-    bgmPlayer.play(AssetSource("Bgm.mp3"));
+    bgmPlayer.play(AssetSource("bgm.mp3")); // ✅ lowercase name
 
+    // Animation
     _controller =
         AnimationController(vsync: this, duration: Duration(seconds: 2));
     _animation = Tween<double>(begin: 0.8, end: 1.2).animate(
@@ -49,12 +51,15 @@ class _SplashScreenState extends State<SplashScreen>
       });
     _controller.repeat(reverse: true);
 
+    // Move to Home after 3 sec
     Future.delayed(Duration(seconds: 3), () {
       if (mounted) {
         Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-                builder: (_) => HomeScreen(bgmPlayer: bgmPlayer)));
+          context,
+          MaterialPageRoute(
+            builder: (_) => HomeScreen(bgmPlayer: bgmPlayer), // ✅ pass bgmPlayer
+          ),
+        );
       }
     });
   }
@@ -62,7 +67,6 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   void dispose() {
     _controller.dispose();
-    bgmPlayer.dispose();
     super.dispose();
   }
 
@@ -101,8 +105,7 @@ class _SplashScreenState extends State<SplashScreen>
     );
   }
 }
-
-// ================= HOME SCREEN =================
+SCREEN =================
 class HomeScreen extends StatefulWidget {
   final AudioPlayer bgmPlayer;
   HomeScreen({required this.bgmPlayer});
@@ -508,13 +511,17 @@ class AboutScreen extends StatelessWidget {
   }
 }
 
-// ================= GAME SCREEN (Expert AI) =================
+// ================= FULL GAME SCREEN =================
 class GameScreen extends StatefulWidget {
   final bool vsComputer;
-  final String playerSymbol;
-  final String? difficulty;
+  final String symbol;
+  final String difficulty;
 
-  GameScreen({required this.vsComputer, required this.playerSymbol, this.difficulty});
+  GameScreen({
+    required this.vsComputer,
+    required this.symbol,
+    required this.difficulty,
+  });
 
   @override
   _GameScreenState createState() => _GameScreenState();
@@ -522,135 +529,86 @@ class GameScreen extends StatefulWidget {
 
 class _GameScreenState extends State<GameScreen>
     with SingleTickerProviderStateMixin {
-  late List<String> board;
-  late String currentTurn;
-  late String opponentSymbol;
-  bool gameOver = false;
-  String resultMessage = "";
-  final AudioPlayer tapPlayer = AudioPlayer();
-  final AudioPlayer celebratePlayer = AudioPlayer();
-  List<int> winningLine = [];
-  late AnimationController _tapController;
-  late Animation<double> _tapAnimation;
+  List<String> board = List.filled(9, '');
+  String currentPlayer = "X";
+  String? winner;
+  int moveCount = 0;
+
+  late String playerSymbol;
+  late String computerSymbol;
+
+  // Audio players
+  AudioPlayer tapPlayer = AudioPlayer();
+  AudioPlayer celebrationPlayer = AudioPlayer();
+
+  // Animation
+  late AnimationController _winnerController;
+  late Animation<double> _winnerAnimation;
 
   @override
   void initState() {
     super.initState();
-    board = List.filled(9, "");
-    currentTurn = "X";
-    opponentSymbol = widget.playerSymbol == "X" ? "O" : "X";
+    playerSymbol = widget.symbol;
+    computerSymbol = (playerSymbol == "X") ? "O" : "X";
 
-    _tapController =
-        AnimationController(vsync: this, duration: Duration(milliseconds: 200));
-    _tapAnimation =
-        Tween<double>(begin: 1.0, end: 1.2).animate(CurvedAnimation(
-      parent: _tapController,
+    _winnerController =
+        AnimationController(vsync: this, duration: Duration(milliseconds: 600));
+    _winnerAnimation =
+        Tween<double>(begin: 1.0, end: 1.3).animate(CurvedAnimation(
+      parent: _winnerController,
       curve: Curves.easeInOut,
     ));
 
-    if (widget.vsComputer && widget.playerSymbol == "O") {
-      Future.delayed(Duration(milliseconds: 400), () => computerMove());
+    // Computer first move if player chose O
+    if (widget.vsComputer && playerSymbol == "O") {
+      Future.delayed(Duration(milliseconds: 500 + Random().nextInt(200)),
+          computerMove);
     }
   }
 
-  void playTap() async {
-    await tapPlayer.play(AssetSource("Tap.mp3"), mode: PlayerMode.lowLatency);
-    _tapController.forward().then((_) => _tapController.reverse());
+  @override
+  void dispose() {
+    _winnerController.dispose();
+    super.dispose();
   }
 
-  void playCelebrate() async {
-    await celebratePlayer.play(AssetSource("Celebration.mp3"));
+  void playTapSound() async {
+    await tapPlayer.play(AssetSource("Tap.mp3"));
   }
 
-  void handleTap(int index) {
-    if (gameOver) return;
-    if (widget.vsComputer && currentTurn != widget.playerSymbol) return;
-    if (board[index] != "") return;
+  void playCelebrationSound() async {
+    await celebrationPlayer.play(AssetSource("Celebration.mp3"));
+  }
+
+  void handleTap(int index) async {
+    if (board[index] != '' || winner != null) return;
+
+    if (widget.vsComputer && currentPlayer != playerSymbol) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text("Wait for your turn!")));
+      return;
+    }
 
     setState(() {
-      board[index] = currentTurn;
-      playTap();
+      board[index] = currentPlayer;
+      moveCount++;
+      playTapSound();
       checkWinner();
-      if (!gameOver) {
-        currentTurn = currentTurn == "X" ? "O" : "X";
-        if (widget.vsComputer && currentTurn == opponentSymbol) {
-          Future.delayed(Duration(milliseconds: 400), () => computerMove());
-        }
-      }
+      if (winner == null) switchTurn();
     });
-  }
 
-  void computerMove() {
-    if (gameOver) return;
-
-    int move;
-    if (widget.difficulty == "Expert") {
-      move = getBestMove();
-    } else {
-      // fallback simple AI for Easy/Medium
-      List<int> empty = [];
-      for (int i = 0; i < 9; i++) {
-        if (board[i] == "") empty.add(i);
-      }
-      move = empty[DateTime.now().millisecondsSinceEpoch % empty.length];
-    }
-
-    handleTap(move);
-  }
-
-  int getBestMove() {
-    int bestScore = -1000;
-    int move = -1;
-
-    for (int i = 0; i < 9; i++) {
-      if (board[i] == "") {
-        board[i] = opponentSymbol;
-        int score = minimax(board, 0, false);
-        board[i] = "";
-        if (score > bestScore) {
-          bestScore = score;
-          move = i;
-        }
-      }
-    }
-    return move;
-  }
-
-  int minimax(List<String> b, int depth, bool isMaximizing) {
-    String? winner = evaluateWinner(b);
-    if (winner != null) {
-      if (winner == opponentSymbol) return 10 - depth;
-      if (winner == widget.playerSymbol) return depth - 10;
-      if (winner == "Draw") return 0;
-    }
-
-    if (isMaximizing) {
-      int bestScore = -1000;
-      for (int i = 0; i < 9; i++) {
-        if (b[i] == "") {
-          b[i] = opponentSymbol;
-          int score = minimax(b, depth + 1, false);
-          b[i] = "";
-          bestScore = max(score, bestScore);
-        }
-      }
-      return bestScore;
-    } else {
-      int bestScore = 1000;
-      for (int i = 0; i < 9; i++) {
-        if (b[i] == "") {
-          b[i] = widget.playerSymbol;
-          int score = minimax(b, depth + 1, true);
-          b[i] = "";
-          bestScore = min(score, bestScore);
-        }
-      }
-      return bestScore;
+    if (widget.vsComputer && currentPlayer == computerSymbol && winner == null) {
+      Future.delayed(Duration(milliseconds: 400 + Random().nextInt(300)),
+          computerMove);
     }
   }
 
-  String? evaluateWinner(List<String> b) {
-    List<List<int>> wins = [
+  void switchTurn() {
+    currentPlayer = (currentPlayer == "X") ? "O" : "X";
+  }
+
+  void checkWinner() async {
+    List<List<int>> winPatterns = [
       [0, 1, 2],
       [3, 4, 5],
       [6, 7, 8],
@@ -658,141 +616,236 @@ class _GameScreenState extends State<GameScreen>
       [1, 4, 7],
       [2, 5, 8],
       [0, 4, 8],
-      [2, 4, 6],
+      [2, 4, 6]
     ];
-    for (var line in wins) {
-      if (b[line[0]] != "" &&
-          b[line[0]] == b[line[1]] &&
-          b[line[1]] == b[line[2]]) {
-        winningLine = line;
-        return b[line[0]];
+
+    for (var pattern in winPatterns) {
+      String a = board[pattern[0]];
+      String b = board[pattern[1]];
+      String c = board[pattern[2]];
+
+      if (a != '' && a == b && b == c) {
+        setState(() {
+          winner = a;
+          _winnerController.repeat(reverse: true);
+          playCelebrationSound();
+        });
+        await updateScores();
+        return;
       }
     }
-    if (!b.contains("")) return "Draw";
-    return null;
-  }
 
-  void checkWinner() async {
-    String? winner = evaluateWinner(board);
-    if (winner != null) {
-      gameOver = true;
-      if (winner == "Draw") {
-        resultMessage = "Draw!";
-      } else if (winner == widget.playerSymbol) {
-        resultMessage = "You Win!";
-        playCelebrate();
-      } else {
-        resultMessage = "You Lose!";
-        playCelebrate();
-      }
-      updateScores(winner);
-      setState(() {});
+    if (moveCount == 9 && winner == null) {
+      setState(() {
+        winner = "Draw";
+        playCelebrationSound();
+      });
+      await updateScores();
     }
   }
 
-  void updateScores(String winner) async {
+  Future<void> updateScores() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    int pw = prefs.getInt("playerWins") ?? 0;
-    int cw = prefs.getInt("computerWins") ?? 0;
-    int dr = prefs.getInt("draws") ?? 0;
-
-    if (winner == widget.playerSymbol) pw++;
-    if (winner == opponentSymbol) cw++;
-    if (winner == "Draw") dr++;
-
-    await prefs.setInt("playerWins", pw);
-    await prefs.setInt("computerWins", cw);
-    await prefs.setInt("draws", dr);
+    if (winner == playerSymbol) {
+      prefs.setInt("playerWins", (prefs.getInt("playerWins") ?? 0) + 1);
+    } else if (winner == computerSymbol) {
+      prefs.setInt("computerWins", (prefs.getInt("computerWins") ?? 0) + 1);
+    } else if (winner == "Draw") {
+      prefs.setInt("draws", (prefs.getInt("draws") ?? 0) + 1);
+    }
   }
 
-  Widget buildCell(int index) {
-    bool highlight = winningLine.contains(index);
-    return GestureDetector(
-      onTap: () => handleTap(index),
-      child: AnimatedScale(
-        scale: _tapAnimation.value,
-        duration: Duration(milliseconds: 200),
-        child: Container(
-          decoration: BoxDecoration(
-              border: Border.all(color: Colors.white),
-              color: highlight ? Colors.greenAccent : Colors.transparent),
-          child: Center(
-            child: Text(
-              board[index],
-              style: TextStyle(
-                  color: board[index] == "X" ? Colors.red : Colors.blue,
-                  fontSize: 48,
-                  fontWeight: FontWeight.bold),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+  void computerMove() {
+    int move;
+    if (widget.difficulty == "Easy") {
+      move = getRandomMove();
+    } else if (widget.difficulty == "Medium") {
+      move = (Random().nextBool()) ? getBestMove() : getRandomMove();
+    } else {
+      move = getBestMove();
+    }
 
-  void resetGame() {
     setState(() {
-      board = List.filled(9, "");
-      currentTurn = "X";
-      winningLine = [];
-      gameOver = false;
-      resultMessage = "";
-      if (widget.vsComputer && widget.playerSymbol == "O") {
-        Future.delayed(Duration(milliseconds: 400), () => computerMove());
-      }
+      board[move] = computerSymbol;
+      moveCount++;
+      playTapSound();
+      checkWinner();
+      if (winner == null) switchTurn();
     });
   }
 
-  @override
-  void dispose() {
-    _tapController.dispose();
-    tapPlayer.dispose();
-    celebratePlayer.dispose();
-    super.dispose();
+  int getRandomMove() {
+    List<int> available = [];
+    for (int i = 0; i < board.length; i++) {
+      if (board[i] == '') available.add(i);
+    }
+    return available[Random().nextInt(available.length)];
+  }
+
+  int getBestMove() {
+    int bestScore = -1000;
+    int bestMove = -1;
+
+    for (int i = 0; i < 9; i++) {
+      if (board[i] == '') {
+        board[i] = computerSymbol;
+        int score = minimax(board, 0, false);
+        board[i] = '';
+        if (score > bestScore) {
+          bestScore = score;
+          bestMove = i;
+        }
+      }
+    }
+    return bestMove;
+  }
+
+  int minimax(List<String> newBoard, int depth, bool isMaximizing) {
+    String result = evaluateBoard();
+    if (result != '') {
+      if (result == computerSymbol) return 10 - depth;
+      if (result == playerSymbol) return depth - 10;
+      return 0;
+    }
+
+    if (isMaximizing) {
+      int bestScore = -1000;
+      for (int i = 0; i < 9; i++) {
+        if (newBoard[i] == '') {
+          newBoard[i] = computerSymbol;
+          int score = minimax(newBoard, depth + 1, false);
+          newBoard[i] = '';
+          bestScore = max(score, bestScore);
+        }
+      }
+      return bestScore;
+    } else {
+      int bestScore = 1000;
+      for (int i = 0; i < 9; i++) {
+        if (newBoard[i] == '') {
+          newBoard[i] = playerSymbol;
+          int score = minimax(newBoard, depth + 1, true);
+          newBoard[i] = '';
+          bestScore = min(score, bestScore);
+        }
+      }
+      return bestScore;
+    }
+  }
+
+  String evaluateBoard() {
+    List<List<int>> winPatterns = [
+      [0, 1, 2],
+      [3, 4, 5],
+      [6, 7, 8],
+      [0, 3, 6],
+      [1, 4, 7],
+      [2, 5, 8],
+      [0, 4, 8],
+      [2, 4, 6]
+    ];
+
+    for (var pattern in winPatterns) {
+      String a = board[pattern[0]];
+      String b = board[pattern[1]];
+      String c = board[pattern[2]];
+      if (a != '' && a == b && b == c) return a;
+    }
+
+    if (!board.contains('')) return "Draw";
+    return '';
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.vsComputer ? "Vs Computer" : "2 Player"),
-        backgroundColor: Colors.deepPurple,
-      ),
-      body: Container(
-        padding: EdgeInsets.all(10),
-        decoration: BoxDecoration(
-            gradient: LinearGradient(
-                colors: [Colors.deepPurple, Colors.purpleAccent],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight)),
-        child: Column(
-          children: [
-            SizedBox(height: 20),
-            if (gameOver)
-              Text(resultMessage,
+      appBar: AppBar(title: Text("Tic Tac Toe")),
+      body: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          AnimatedBuilder(
+            animation: _winnerController,
+            builder: (context, child) {
+              return Transform.scale(
+                scale: winner != null ? _winnerAnimation.value : 1.0,
+                child: Text(
+                  winner == null
+                      ? "Turn: $currentPlayer"
+                      : (winner == "Draw"
+                          ? "It's a Draw!"
+                          : "Winner: $winner"),
                   style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold)),
-            SizedBox(height: 20),
-            Expanded(
-              child: GridView.builder(
-                  itemCount: 9,
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 3),
-                  itemBuilder: (_, index) => buildCell(index)),
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    color: winner == null
+                        ? (currentPlayer == "X" ? Colors.red : Colors.green)
+                        : Colors.yellowAccent,
+                  ),
+                ),
+              );
+            },
+          ),
+          SizedBox(height: 20),
+          GridView.builder(
+            shrinkWrap: true,
+            itemCount: 9,
+            padding: EdgeInsets.symmetric(horizontal: 20),
+            gridDelegate:
+                SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3),
+            itemBuilder: (context, index) {
+              return GestureDetector(
+                onTap: () => handleTap(index),
+                child: AnimatedContainer(
+                  duration: Duration(milliseconds: 200),
+                  margin: EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: Colors.blue[50],
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                          color: Colors.black26,
+                          offset: Offset(2, 2),
+                          blurRadius: 3)
+                    ],
+                  ),
+                  child: Center(
+                    child: Text(
+                      board[index],
+                      style: TextStyle(
+                        fontSize: 52,
+                        fontWeight: FontWeight.bold,
+                        color: board[index] == "X" ? Colors.red : Colors.green,
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+          SizedBox(height: 20),
+          ElevatedButton(
+            onPressed: () {
+              setState(() {
+                board = List.filled(9, '');
+                currentPlayer = "X";
+                winner = null;
+                moveCount = 0;
+              });
+
+              if (widget.vsComputer && playerSymbol == "O") {
+                Future.delayed(
+                    Duration(milliseconds: 500 + Random().nextInt(200)),
+                    computerMove);
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              minimumSize: Size(150, 50),
+              backgroundColor: Colors.deepPurpleAccent,
             ),
-            SizedBox(height: 20),
-            ElevatedButton(
-                onPressed: resetGame,
-                style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.greenAccent.shade700,
-                    minimumSize: Size(double.infinity, 50)),
-                child: Text("Restart Game",
-                    style:
-                        TextStyle(fontSize: 20, fontWeight: FontWeight.bold))),
-          ],
-        ),
+            child: Text("Restart",
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          ),
+        ],
       ),
     );
   }
