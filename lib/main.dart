@@ -178,8 +178,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           TextStyle(fontSize: 20, fontWeight: FontWeight.bold))),
               SizedBox(height: 20),
               ElevatedButton(
-                  onPressed: () => navigateTo(
-                      context, TwoPlayerSymbolSelectionScreen()),
+                  onPressed: () =>
+                      navigateTo(context, TwoPlayerSymbolSelectionScreen()),
                   style: ElevatedButton.styleFrom(
                       minimumSize: Size(220, 50),
                       backgroundColor: Colors.blueAccent.shade700,
@@ -286,6 +286,7 @@ class SymbolSelectionScreen extends StatelessWidget {
                   vsComputer: vsComputer,
                   playerSymbol: playerSymbol,
                   difficulty: difficulty,
+                  bgmPlayer: bgmPlayer,
                 )));
   }
 
@@ -306,7 +307,7 @@ class SymbolSelectionScreen extends StatelessWidget {
                 vsComputer
                     ? "Choose Your Symbol (Vs Computer)"
                     : "Player 1: Choose Your Symbol",
-                style: TextStyle(
+                    style: TextStyle(
                     color: Colors.white,
                     fontSize: 28,
                     fontWeight: FontWeight.bold),
@@ -401,120 +402,18 @@ class TwoPlayerSymbolSelectionScreen extends StatelessWidget {
   }
 }
 
-// ================= SETTINGS SCREEN =================
-class SettingsScreen extends StatefulWidget {
-  final AudioPlayer bgmPlayer;
-  SettingsScreen({required this.bgmPlayer});
-
-  @override
-  _SettingsScreenState createState() => _SettingsScreenState();
-}
-
-class _SettingsScreenState extends State<SettingsScreen> {
-  bool bgmOn = true;
-
-  @override
-  void initState() {
-    super.initState();
-    loadSettings();
-  }
-
-  void loadSettings() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    setState(() {
-      bgmOn = prefs.getBool("bgmOn") ?? true;
-    });
-    if (!bgmOn) widget.bgmPlayer.pause();
-  }
-
-  void toggleBgm(bool value) async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    setState(() {
-      bgmOn = value;
-    });
-    await prefs.setBool("bgmOn", bgmOn);
-    if (bgmOn) {
-      widget.bgmPlayer.resume();
-    } else {
-      widget.bgmPlayer.pause();
-    }
-  }
-
-  void resetScores() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    await prefs.setInt("playerWins", 0);
-    await prefs.setInt("computerWins", 0);
-    await prefs.setInt("draws", 0);
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text("Scores Reset!")));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text("Settings"), backgroundColor: Colors.deepPurple),
-      body: Container(
-        padding: EdgeInsets.all(20),
-        decoration: BoxDecoration(
-            gradient: LinearGradient(
-                colors: [Colors.deepPurple, Colors.purpleAccent],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight)),
-        child: Column(
-          children: [
-            SwitchListTile(
-              title: Text("Background Music",
-                  style: TextStyle(color: Colors.white, fontSize: 18)),
-              value: bgmOn,
-              onChanged: toggleBgm,
-            ),
-            SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: resetScores,
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.redAccent,
-                  minimumSize: Size(double.infinity, 50)),
-              child: Text("Reset Scores",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ================= ABOUT SCREEN =================
-class AboutScreen extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text("About"), backgroundColor: Colors.deepPurple),
-      body: Container(
-        padding: EdgeInsets.all(20),
-        decoration: BoxDecoration(
-            gradient: LinearGradient(
-                colors: [Colors.deepPurple, Colors.purpleAccent],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight)),
-        child: Center(
-          child: Text(
-            "Tic Tac Toe Game Pro\n\nDeveloped by Piyush Sharma\n\nEnjoy playing!",
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.white, fontSize: 20),
-          ),
-        ),
-      ),
-    );
-  }
-}
 // ================= GAME SCREEN =================
 class GameScreen extends StatefulWidget {
   final bool vsComputer;
   final String playerSymbol;
   final String? difficulty;
+  final AudioPlayer? bgmPlayer;
+
   GameScreen(
-      {required this.vsComputer, required this.playerSymbol, this.difficulty});
+      {required this.vsComputer,
+      required this.playerSymbol,
+      this.difficulty,
+      this.bgmPlayer});
 
   @override
   _GameScreenState createState() => _GameScreenState();
@@ -523,198 +422,114 @@ class GameScreen extends StatefulWidget {
 class _GameScreenState extends State<GameScreen> {
   List<String> board = List.filled(9, "");
   bool playerTurn = true;
-  late String computerSymbol;
-  late AudioPlayer sfxPlayer;
-  late ConfettiController confettiController;
-  bool gameOver = false;
+  late String aiSymbol;
+  late String humanSymbol;
+  ConfettiController? confettiController;
+  bool sfxOn = true;
 
   @override
   void initState() {
     super.initState();
-    computerSymbol = widget.playerSymbol == "X" ? "O" : "X";
-    sfxPlayer = AudioPlayer();
-    confettiController =
-        ConfettiController(duration: Duration(seconds: 2));
+    humanSymbol = widget.playerSymbol;
+    aiSymbol = (humanSymbol == "X") ? "O" : "X";
+    confettiController = ConfettiController(duration: Duration(seconds: 2));
+    loadSFXSetting();
   }
 
-  void playSfx(String file) {
-    sfxPlayer.play(AssetSource(file));
-  }
-
-  void resetBoard() {
-    setState(() {
-      board = List.filled(9, "");
-      playerTurn = true;
-      gameOver = false;
-    });
-  }
-
-  void makeMove(int index) async {
-    if (board[index] != "" || gameOver) return;
-
-    setState(() {
-      board[index] = playerTurn ? widget.playerSymbol : computerSymbol;
-      playerTurn = !playerTurn;
-    });
-    playSfx("tap.mp3");
-
-    String winner = checkWinner();
-    if (winner != "") {
-      handleWin(winner);
-      return;
-    }
-
-    if (widget.vsComputer && !playerTurn && !gameOver) {
-      await Future.delayed(Duration(milliseconds: 500));
-      int aiMove = getBestMove();
-      makeMove(aiMove);
-    }
-  }
-
-  void handleWin(String winner) async {
-    setState(() => gameOver = true);
-    if (winner == "Draw") {
-      playSfx("draw.mp3");
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("It's a Draw!")));
-      await saveScore(draw: true);
-    } else {
-      playSfx("Celebration.mp3");
-      confettiController.play();
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("$winner Wins!")));
-      await saveScore(playerWin: winner == widget.playerSymbol);
-    }
-  }
-
-  Future<void> saveScore({bool playerWin = false, bool draw = false}) async {
+  void loadSFXSetting() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    int playerWins = prefs.getInt("playerWins") ?? 0;
-    int computerWins = prefs.getInt("computerWins") ?? 0;
-    int draws = prefs.getInt("draws") ?? 0;
-
-    if (draw) draws++;
-    else if (playerWin) playerWins++;
-    else computerWins++;
-
-    await prefs.setInt("playerWins", playerWins);
-    await prefs.setInt("computerWins", computerWins);
-    await prefs.setInt("draws", draws);
-  }
-
-  String checkWinner() {
-    List<List<int>> lines = [
-      [0, 1, 2],
-      [3, 4, 5],
-      [6, 7, 8],
-      [0, 3, 6],
-      [1, 4, 7],
-      [2, 5, 8],
-      [0, 4, 8],
-      [2, 4, 6]
-    ];
-
-    for (var line in lines) {
-      if (board[line[0]] != "" &&
-          board[line[0]] == board[line[1]] &&
-          board[line[1]] == board[line[2]]) {
-        return board[line[0]];
-      }
-    }
-
-    if (!board.contains("")) return "Draw";
-    return "";
-  }
-
-  int getBestMove() {
-    if (widget.difficulty == "Easy") {
-      // Random move
-      List<int> empty = [];
-      for (int i = 0; i < 9; i++) if (board[i] == "") empty.add(i);
-      return empty[Random().nextInt(empty.length)];
-    } else {
-      // Minimax for Medium, Hard, Expert
-      return minimax(board, computerSymbol).index;
-    }
-  }
-
-  Move minimax(List<String> newBoard, String currentPlayer) {
-    String winner = checkWinnerBoard(newBoard);
-    if (winner == widget.playerSymbol) return Move(score: -10);
-    if (winner == computerSymbol) return Move(score: 10);
-    if (!newBoard.contains("")) return Move(score: 0);
-
-    List<Move> moves = [];
-
-    for (int i = 0; i < 9; i++) {
-      if (newBoard[i] == "") {
-        String backup = newBoard[i];
-        newBoard[i] = currentPlayer;
-
-        int score = minimax(newBoard,
-                currentPlayer == computerSymbol ? widget.playerSymbol : computerSymbol)
-            .score;
-        moves.add(Move(index: i, score: score));
-
-        newBoard[i] = backup;
-      }
-    }
-
-    Move bestMove = moves[0];
-    if (currentPlayer == computerSymbol) {
-      for (var m in moves) if (m.score > bestMove.score) bestMove = m;
-    } else {
-      for (var m in moves) if (m.score < bestMove.score) bestMove = m;
-    }
-
-    return bestMove;
-  }
-
-  String checkWinnerBoard(List<String> b) {
-    List<List<int>> lines = [
-      [0, 1, 2],
-      [3, 4, 5],
-      [6, 7, 8],
-      [0, 3, 6],
-      [1, 4, 7],
-      [2, 5, 8],
-      [0, 4, 8],
-      [2, 4, 6]
-    ];
-    for (var line in lines) {
-      if (b[line[0]] != "" &&
-          b[line[0]] == b[line[1]] &&
-          b[line[1]] == b[line[2]]) return b[line[0]];
-    }
-    if (!b.contains("")) return "Draw";
-    return "";
+    setState(() {
+      sfxOn = prefs.getBool("sfxOn") ?? true;
+    });
   }
 
   @override
   void dispose() {
-    sfxPlayer.dispose();
-    confettiController.dispose();
+    confettiController?.dispose();
     super.dispose();
   }
 
-  Widget buildCell(int index) {
-    return GestureDetector(
-      onTap: () => makeMove(index),
-      child: Container(
-        decoration: BoxDecoration(
-            border: Border.all(color: Colors.white, width: 2),
-            color: Colors.deepPurple.shade200),
-        child: Center(
-          child: Text(
-            board[index],
-            style: TextStyle(
-                fontSize: 48,
-                fontWeight: FontWeight.bold,
-                color: board[index] == "X" ? Colors.red : Colors.blue),
-          ),
-        ),
-      ),
-    );
+  void makeMove(int index) async {
+    if (board[index] == "") {
+      setState(() {
+        board[index] = playerTurn ? humanSymbol : (widget.vsComputer ? aiSymbol : "O");
+      });
+
+      // Play tap sound
+      playSFX("Tap.mp3");
+
+      if (checkWinner(board[index])) {
+        // Play celebration sound
+        playSFX("Celebration.mp3");
+        confettiController?.play();
+        saveScore(board[index]);
+        Future.delayed(Duration(seconds: 2), () {
+          Navigator.pop(context);
+        });
+      } else if (!board.contains("")) {
+        // Play draw sound
+        playSFX("draw.mp3");
+        saveScore("Draw");
+        Future.delayed(Duration(seconds: 2), () {
+          Navigator.pop(context);
+        });
+      } else {
+        if (widget.vsComputer && !playerTurn) {
+          Future.delayed(Duration(milliseconds: 500), () => computerMove());
+        }
+        playerTurn = !playerTurn;
+      }
+    }
+  }
+
+  void computerMove() {
+    List<int> empty = [];
+    for (int i = 0; i < 9; i++) {
+      if (board[i] == "") empty.add(i);
+    }
+    if (empty.isNotEmpty) {
+      int move = empty[Random().nextInt(empty.length)];
+      makeMove(move);
+    }
+  }
+
+  bool checkWinner(String symbol) {
+    List<List<int>> wins = [
+      [0, 1, 2],
+      [3, 4, 5],
+      [6, 7, 8],
+      [0, 3, 6],
+      [1, 4, 7],
+      [2, 5, 8],
+      [0, 4, 8],
+      [2, 4, 6],
+    ];
+    for (var w in wins) {
+      if (board[w[0]] == symbol &&
+          board[w[1]] == symbol &&
+          board[w[2]] == symbol) return true;
+    }
+    return false;
+  }
+
+  void saveScore(String winner) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    if (winner == humanSymbol) {
+      int val = prefs.getInt("playerWins") ?? 0;
+      prefs.setInt("playerWins", val + 1);
+    } else if (winner == aiSymbol) {
+      int val = prefs.getInt("computerWins") ?? 0;
+      prefs.setInt("computerWins", val + 1);
+    } else {
+      int val = prefs.getInt("draws") ?? 0;
+      prefs.setInt("draws", val + 1);
+    }
+  }
+
+  Future<void> playSFX(String filename) async {
+    if (!sfxOn) return;
+    AudioPlayer player = AudioPlayer();
+    await player.play(AssetSource(filename));
   }
 
   @override
@@ -732,56 +547,218 @@ class _GameScreenState extends State<GameScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
-                  widget.vsComputer
-                      ? "Vs Computer (${widget.difficulty})"
-                      : "2 Player Mode",
+                  "Tic Tac Toe Pro",
                   style: TextStyle(
                       color: Colors.white,
-                      fontSize: 28,
+                      fontSize: 32,
                       fontWeight: FontWeight.bold),
                 ),
                 SizedBox(height: 20),
-                Container(
-                  width: 320,
-                  height: 320,
-                  child: GridView.builder(
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 3),
-                    itemCount: 9,
-                    itemBuilder: (_, i) => buildCell(i),
-                  ),
-                ),
-                SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: resetBoard,
-                  style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orangeAccent,
-                      minimumSize: Size(180, 50)),
-                  child: Text("🔄 Restart",
-                      style:
-                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                ),
+                buildBoard(),
               ],
             ),
           ),
           Align(
-            alignment: Alignment.topCenter,
-            child: ConfettiWidget(
-              confettiController: confettiController,
-              blastDirectionality: BlastDirectionality.explosive,
-              shouldLoop: false,
-              colors: [Colors.green, Colors.blue, Colors.pink, Colors.orange],
-              numberOfParticles: 20,
-            ),
-          )
+              alignment: Alignment.topCenter,
+              child: ConfettiWidget(
+                confettiController: confettiController!,
+                blastDirectionality: BlastDirectionality.explosive,
+                shouldLoop: false,
+                colors: [Colors.yellow, Colors.red, Colors.green, Colors.blue],
+              ))
         ],
+      ),
+    );
+  }
+
+  Widget buildBoard() {
+    return Container(
+      width: 300,
+      height: 300,
+      child: GridView.builder(
+          gridDelegate:
+              SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3),
+          itemCount: 9,
+          itemBuilder: (context, index) {
+            return GestureDetector(
+              onTap: () => makeMove(index),
+              child: Container(
+                margin: EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(12)),
+                child: Center(
+                    child: Text(board[index],
+                        style: TextStyle(
+                            color: board[index] == "X"
+                                ? Colors.redAccent
+                                : Colors.blueAccent,
+                            fontSize: 48,
+                            fontWeight: FontWeight.bold))),
+              ),
+            );
+          }),
+    );
+  }
+}
+// ================= SETTINGS SCREEN =================
+class SettingsScreen extends StatefulWidget {
+  final AudioPlayer bgmPlayer;
+  SettingsScreen({required this.bgmPlayer});
+
+  @override
+  _SettingsScreenState createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  bool bgmOn = true;
+  bool sfxOn = true;
+
+  @override
+  void initState() {
+    super.initState();
+    loadSettings();
+  }
+
+  void loadSettings() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      bgmOn = prefs.getBool("bgmOn") ?? true;
+      sfxOn = prefs.getBool("sfxOn") ?? true;
+    });
+  }
+
+  void toggleBGM(bool value) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      bgmOn = value;
+      prefs.setBool("bgmOn", bgmOn);
+      if (bgmOn) {
+        widget.bgmPlayer.resume();
+      } else {
+        widget.bgmPlayer.pause();
+      }
+    });
+  }
+
+  void toggleSFX(bool value) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      sfxOn = value;
+      prefs.setBool("sfxOn", sfxOn);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text("Settings"),
+        backgroundColor: Colors.deepPurple,
+      ),
+      body: Container(
+        padding: EdgeInsets.all(20),
+        decoration: BoxDecoration(
+            gradient: LinearGradient(
+                colors: [Colors.deepPurple, Colors.purpleAccent],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight)),
+        child: Column(
+          children: [
+            SwitchListTile(
+              title: Text("Background Music",
+                  style: TextStyle(color: Colors.white, fontSize: 18)),
+              value: bgmOn,
+              onChanged: toggleBGM,
+            ),
+            SwitchListTile(
+              title: Text("Sound Effects",
+                  style: TextStyle(color: Colors.white, fontSize: 18)),
+              value: sfxOn,
+              onChanged: toggleSFX,
+            ),
+            SizedBox(height: 20),
+            ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                    minimumSize: Size(double.infinity, 50),
+                    backgroundColor: Colors.purpleAccent.shade700,
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12))),
+                child: Text("Back",
+                    style:
+                        TextStyle(fontSize: 20, fontWeight: FontWeight.bold))),
+          ],
+        ),
       ),
     );
   }
 }
 
-class Move {
-  final int index;
-  final int score;
-  Move({this.index = -1, this.score = 0});
+// ================= ABOUT SCREEN =================
+class AboutScreen extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text("About"),
+        backgroundColor: Colors.deepPurple,
+      ),
+      body: Container(
+        padding: EdgeInsets.all(20),
+        decoration: BoxDecoration(
+            gradient: LinearGradient(
+                colors: [Colors.deepPurple, Colors.purpleAccent],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight)),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "Tic Tac Toe Pro",
+              style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold),
+            ),
+            SizedBox(height: 10),
+            Text(
+              "Version: 1.0.0",
+              style: TextStyle(color: Colors.white70, fontSize: 16),
+            ),
+            SizedBox(height: 20),
+            Text(
+              "Developed by Quantum Games",
+              style: TextStyle(color: Colors.white, fontSize: 18),
+            ),
+            SizedBox(height: 20),
+            Text(
+              "Tic Tac Toe Pro is a fun and challenging game where you can:",
+              style: TextStyle(color: Colors.white, fontSize: 18),
+            ),
+            SizedBox(height: 10),
+            Text(
+              "- Play vs Computer (Easy, Medium, Hard, Expert)\n"
+              "- Play 2 Player Mode with friends\n"
+              "- Enjoy sound effects & background music\n"
+              "- Celebrate wins with confetti\n"
+              "- Track your scores",
+              style: TextStyle(color: Colors.white70, fontSize: 16),
+            ),
+            SizedBox(height: 20),
+            Text(
+              "Thank you for playing! 🎉",
+              style: TextStyle(color: Colors.yellowAccent, fontSize: 18),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ================= OPTIONAL GLOBAL SFX FUNCTION =================
+Future<void> playSFX(String filename) async {
+  AudioPlayer player = AudioPlayer();
+  await player.play(AssetSource(filename));
 }
