@@ -315,7 +315,7 @@ class SymbolSelectionScreen extends StatelessWidget {
                   vsComputer: vsComputer,
                   playerSymbol: playerSymbol,
                   difficulty: difficulty,
-                  bgmPlayer: bgmPlayer,
+                  
                 )));
   }
 
