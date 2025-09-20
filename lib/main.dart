@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   runApp(MyApp());
@@ -26,37 +27,27 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen>
-    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
-  late AudioPlayer bgmPlayer;
+    with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _animation;
-  List<Offset> particles = [];
-  Random random = Random();
+  late AudioPlayer bgmPlayer;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
 
     bgmPlayer = AudioPlayer();
     bgmPlayer.setReleaseMode(ReleaseMode.loop);
-    bgmPlayer.play(AssetSource("bgm.mp3"));
+    bgmPlayer.play(AssetSource("Bgm.mp3"));
 
     _controller =
         AnimationController(vsync: this, duration: Duration(seconds: 2));
-    _animation =
-        Tween<double>(begin: 0.8, end: 1.2).animate(CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeInOut,
-    ))
-          ..addListener(() {
-            setState(() {});
-          });
+    _animation = Tween<double>(begin: 0.8, end: 1.2).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+    )..addListener(() {
+        setState(() {});
+      });
     _controller.repeat(reverse: true);
-
-    for (int i = 0; i < 50; i++) {
-      particles.add(Offset(random.nextDouble() * 400, random.nextDouble() * 800));
-    }
 
     Future.delayed(Duration(seconds: 3), () {
       if (mounted) {
@@ -70,101 +61,45 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
     _controller.dispose();
+    bgmPlayer.dispose();
     super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused) {
-      bgmPlayer.pause();
-    } else if (state == AppLifecycleState.resumed) {
-      bgmPlayer.resume();
-    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        children: [
-          gradientBg(),
-          AnimatedBuilder(
-            animation: _controller,
-            builder: (_, __) {
-              return CustomPaint(painter: FloatingXO(particles: particles));
-            },
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Colors.deepPurple, Colors.purpleAccent],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
-          Center(
-            child: Transform.scale(
-              scale: _animation.value,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Image.asset("assets/logo.png", width: 120, height: 120),
-                  SizedBox(height: 10),
-                  Text(
-                    "T i c T a c T o e",
-                    style: TextStyle(
+        ),
+        child: Center(
+          child: Transform.scale(
+            scale: _animation.value,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Image.asset("assets/logo.png", width: 120, height: 120),
+                SizedBox(height: 10),
+                Text(
+                  "Tic Tac Toe",
+                  style: TextStyle(
                       color: Colors.white,
-                      fontSize: 28,
+                      fontSize: 32,
                       fontWeight: FontWeight.bold,
-                      letterSpacing: 4,
-                    ),
-                  ),
-                ],
-              ),
+                      letterSpacing: 3),
+                ),
+              ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }
-}
-
-// ================= FLOATING X/O PAINTER =================
-class FloatingXO extends CustomPainter {
-  final List<Offset> particles;
-  Random random = Random();
-  FloatingXO({required this.particles});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    for (var pos in particles) {
-      TextPainter tp = TextPainter(
-        text: TextSpan(
-          text: random.nextBool() ? "❌" : "⭕",
-          style: TextStyle(
-            fontSize: 20,
-            color: random.nextBool()
-                ? Colors.red.shade200.withOpacity(0.7)
-                : Colors.blue.shade200.withOpacity(0.7),
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        textDirection: TextDirection.ltr,
-      );
-      tp.layout();
-      tp.paint(canvas, pos);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
-}
-
-// ================= GRADIENT BACKGROUND =================
-Widget gradientBg() {
-  return Container(
-    decoration: BoxDecoration(
-      gradient: LinearGradient(
-        colors: [Colors.deepPurple, Colors.purpleAccent],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      ),
-    ),
-  );
 }
 
 // ================= HOME SCREEN =================
@@ -173,163 +108,162 @@ class HomeScreen extends StatefulWidget {
   HomeScreen({required this.bgmPlayer});
 
   @override
-  _HomeScreenState createState() => _HomeScreenState();
+  State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen>
-    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
-  late AnimationController _particleController;
-  List<Offset> particles = [];
-  Random random = Random();
-  bool isBgmOn = true;
+class _HomeScreenState extends State<HomeScreen> {
+  int playerWins = 0;
+  int computerWins = 0;
+  int draws = 0;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
-
-    _particleController = AnimationController(
-      vsync: this,
-      duration: Duration(seconds: 2),
-    )..repeat(reverse: true);
-
-    for (int i = 0; i < 50; i++) {
-      particles.add(Offset(
-          random.nextDouble() * MediaQuery.of(context).size.width,
-          random.nextDouble() * MediaQuery.of(context).size.height));
-    }
-
-    widget.bgmPlayer.resume();
+    loadScores();
   }
 
-  @override
-  void dispose() {
-    _particleController.dispose();
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.paused) {
-      widget.bgmPlayer.pause();
-    } else if (state == AppLifecycleState.resumed && isBgmOn) {
-      widget.bgmPlayer.resume();
-    }
-  }
-
-  void toggleBgm() {
+  void loadScores() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
-      isBgmOn = !isBgmOn;
-      if (isBgmOn)
-        widget.bgmPlayer.resume();
-      else
-        widget.bgmPlayer.pause();
+      playerWins = prefs.getInt("playerWins") ?? 0;
+      computerWins = prefs.getInt("computerWins") ?? 0;
+      draws = prefs.getInt("draws") ?? 0;
     });
   }
 
-  void navigateToGame(bool vsComputer) {
-    widget.bgmPlayer.pause();
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) =>
-            SymbolSelectionScreen(vsComputer: vsComputer, bgmPlayer: widget.bgmPlayer),
-      ),
-    ).then((_) {
-      if (isBgmOn) widget.bgmPlayer.resume();
-    });
+  void navigateTo(BuildContext context, Widget screen) {
+    Navigator.push(context, MaterialPageRoute(builder: (_) => screen))
+        .then((_) => loadScores());
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        children: [
-          gradientBg(),
-          Positioned.fill(
-            child: AnimatedBuilder(
-              animation: _particleController,
-              builder: (_, __) =>
-                  CustomPaint(painter: FloatingXO(particles: particles)),
-            ),
-          ),
-          Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  "Choose Your Mode To Play 🎮",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold),
-                ),
-                SizedBox(height: 50),
-                ElevatedButton(
-                  onPressed: () => navigateToGame(true),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+              colors: [Colors.deepPurple, Colors.purpleAccent],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight),
+        ),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                "Tic Tac Toe",
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 36,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 2),
+              ),
+              SizedBox(height: 20),
+              Text(
+                "Player: $playerWins  |  Computer: $computerWins  |  Draws: $draws",
+                style: TextStyle(color: Colors.white, fontSize: 16),
+              ),
+              SizedBox(height: 40),
+              ElevatedButton(
+                  onPressed: () => navigateTo(
+                      context, ModeSelectionScreen(bgmPlayer: widget.bgmPlayer)),
                   style: ElevatedButton.styleFrom(
                       minimumSize: Size(220, 50),
                       backgroundColor: Colors.greenAccent.shade700,
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12))),
-                  child: Text("Play vs Computer",
+                  child: Text("▶ Play Game",
                       style:
-                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                ),
-                SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: () => navigateToGame(false),
+                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold))),
+              SizedBox(height: 20),
+              ElevatedButton(
+                  onPressed: () => navigateTo(
+                      context, TwoPlayerSymbolSelectionScreen()),
                   style: ElevatedButton.styleFrom(
                       minimumSize: Size(220, 50),
                       backgroundColor: Colors.blueAccent.shade700,
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12))),
-                  child: Text("Play with Friends",
+                  child: Text("👥 2 Player Game",
                       style:
-                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-                ),
-              ],
-            ),
+                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold))),
+              SizedBox(height: 20),
+              ElevatedButton(
+                  onPressed: () => navigateTo(
+                      context, SettingsScreen(bgmPlayer: widget.bgmPlayer)),
+                  style: ElevatedButton.styleFrom(
+                      minimumSize: Size(220, 50),
+                      backgroundColor: Colors.orangeAccent.shade700,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12))),
+                  child: Text("⚙ Settings",
+                      style:
+                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold))),
+              SizedBox(height: 20),
+              ElevatedButton(
+                  onPressed: () => navigateTo(context, AboutScreen()),
+                  style: ElevatedButton.styleFrom(
+                      minimumSize: Size(220, 50),
+                      backgroundColor: Colors.purpleAccent.shade700,
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12))),
+                  child: Text("🏆 About",
+                      style:
+                          TextStyle(fontSize: 20, fontWeight: FontWeight.bold))),
+            ],
           ),
-          Positioned(
-            top: 40,
-            right: 20,
-            child: Row(
-              children: [
-                IconButton(
-                  icon: Icon(
-                      isBgmOn ? Icons.volume_up : Icons.volume_off,
-                      color: Colors.white),
-                  onPressed: toggleBgm,
-                ),
-                SizedBox(width: 10),
-                IconButton(
-                  icon: Icon(Icons.info_outline, color: Colors.white),
-                  onPressed: () {
-                    showDialog(
-                      context: context,
-                      builder: (_) => AlertDialog(
-                        backgroundColor: Colors.deepPurple.shade800,
-                        title: Text("About",
-                            style: TextStyle(color: Colors.white)),
-                        content: Text(
-                            "Made by G A PRODUCTION\nVersion 1.0.0\nTry to Win Against Our SuperExpert AI",
-                            style: TextStyle(color: Colors.white70)),
-                        actions: [
-                          TextButton(
-                              onPressed: () => Navigator.pop(context),
-                              child: Text("Close"))
-                        ],
+        ),
+      ),
+    );
+  }
+}
+
+// ================= MODE SELECTION SCREEN =================
+class ModeSelectionScreen extends StatelessWidget {
+  final AudioPlayer bgmPlayer;
+  ModeSelectionScreen({required this.bgmPlayer});
+
+  void startGame(BuildContext context, String difficulty) {
+    Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+            builder: (_) => SymbolSelectionScreen(
+                vsComputer: true, difficulty: difficulty, bgmPlayer: bgmPlayer)));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final List<String> modes = ["Easy", "Medium", "Hard", "Expert"];
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text("Select Difficulty"),
+        backgroundColor: Colors.deepPurple,
+      ),
+      body: Container(
+        decoration: BoxDecoration(
+            gradient: LinearGradient(
+                colors: [Colors.deepPurple, Colors.purpleAccent],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight)),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: modes
+              .map((mode) => Container(
+                    margin: EdgeInsets.symmetric(vertical: 8, horizontal: 40),
+                    child: ElevatedButton(
+                      onPressed: () => startGame(context, mode),
+                      style: ElevatedButton.styleFrom(
+                        minimumSize: Size(double.infinity, 50),
+                        backgroundColor: Colors.purpleAccent.shade700,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                       ),
-                    );
-                  },
-                ),
-              ],
-            ),
-          ),
-        ],
+                      child: Text(mode, style: TextStyle(fontSize: 18)),
+                    ),
+                  ))
+              .toList(),
+        ),
       ),
     );
   }
@@ -338,126 +272,243 @@ class _HomeScreenState extends State<HomeScreen>
 // ================= SYMBOL SELECTION SCREEN =================
 class SymbolSelectionScreen extends StatelessWidget {
   final bool vsComputer;
+  final String? difficulty;
   final AudioPlayer bgmPlayer;
-  SymbolSelectionScreen({required this.vsComputer, required this.bgmPlayer});
+  SymbolSelectionScreen(
+      {required this.vsComputer, this.difficulty, required this.bgmPlayer});
 
   void startGame(BuildContext context, String playerSymbol) {
-    if (vsComputer) {
-      showDialog(
-        context: context,
-        builder: (_) =>
-            DifficultyDialog(playerSymbol: playerSymbol, bgmPlayer: bgmPlayer),
-      );
-    } else {
-      bgmPlayer.pause();
-      Navigator.pushReplacement(
+    Navigator.pushReplacement(
         context,
         MaterialPageRoute(
-          builder: (_) => GameScreen(
-            vsComputer: false,
-            playerSymbol: playerSymbol,
-          ),
-        ),
-      );
-    }
+            builder: (_) => GameScreen(
+                  vsComputer: vsComputer,
+                  playerSymbol: playerSymbol,
+                  difficulty: difficulty,
+                )));
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Stack(
-        children: [
-          gradientBg(),
-          Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text("Choose Your Symbol",
-                    style:
-                        TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold)),
-                SizedBox(height: 30),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    ElevatedButton(
+      body: Container(
+        decoration: BoxDecoration(
+            gradient: LinearGradient(
+                colors: [Colors.deepPurple, Colors.purpleAccent],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight)),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                vsComputer
+                    ? "Choose Your Symbol (Vs Computer)"
+                    : "Player 1: Choose Your Symbol",
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 30),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ElevatedButton(
                       onPressed: () => startGame(context, "X"),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.redAccent,
-                        minimumSize: Size(100, 100),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20)),
-                      ),
-                      child: Text("X", style: TextStyle(fontSize: 36)),
-                    ),
-                    SizedBox(width: 40),
-                    ElevatedButton(
+                          backgroundColor: Colors.redAccent,
+                          minimumSize: Size(120, 120),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20))),
+                      child: Text("X", style: TextStyle(fontSize: 48))),
+                  SizedBox(width: 40),
+                  ElevatedButton(
                       onPressed: () => startGame(context, "O"),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blueAccent,
-                        minimumSize: Size(100, 100),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20)),
-                      ),
-                      child: Text("O", style: TextStyle(fontSize: 36)),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+                          backgroundColor: Colors.blueAccent,
+                          minimumSize: Size(120, 120),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20))),
+                      child: Text("O", style: TextStyle(fontSize: 48))),
+                ],
+              )
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 }
 
-// ================= DIFFICULTY DIALOG =================
-class DifficultyDialog extends StatelessWidget {
-  final String playerSymbol;
-  final AudioPlayer bgmPlayer;
-  DifficultyDialog({required this.playerSymbol, required this.bgmPlayer});
+// ================= 2 PLAYER SYMBOL SELECTION =================
+class TwoPlayerSymbolSelectionScreen extends StatelessWidget {
+  void startGame(BuildContext context, String playerSymbol) {
+    Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(
+            builder: (_) =>
+                GameScreen(vsComputer: false, playerSymbol: playerSymbol)));
+  }
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      backgroundColor: Colors.deepPurple.shade800,
-      title: Text("Select Difficulty Level",
-          style: TextStyle(color: Colors.white)),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: ["Easy", "Medium", "Hard", "Expert", "Super Expert"]
-            .map((diff) => Container(
-                  margin: EdgeInsets.symmetric(vertical: 4),
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.purpleAccent.shade700,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                    ),
-                    onPressed: () {
-                      bgmPlayer.pause();
-                      Navigator.pop(context);
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => GameScreen(
-                              vsComputer: true,
-                              playerSymbol: playerSymbol,
-                              difficulty: diff),
-                        ),
-                      );
-                    },
-                    child: Text(diff, style: TextStyle(fontSize: 18)),
-                  ),
-                ))
-            .toList(),
+    return Scaffold(
+      body: Container(
+        decoration: BoxDecoration(
+            gradient: LinearGradient(
+                colors: [Colors.deepPurple, Colors.purpleAccent],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight)),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text("Player 1: Choose Your Symbol",
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold)),
+              SizedBox(height: 30),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ElevatedButton(
+                      onPressed: () => startGame(context, "X"),
+                      style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.redAccent,
+                          minimumSize: Size(120, 120),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20))),
+                      child: Text("X", style: TextStyle(fontSize: 48))),
+                  SizedBox(width: 40),
+                  ElevatedButton(
+                      onPressed: () => startGame(context, "O"),
+                      style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blueAccent,
+                          minimumSize: Size(120, 120),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20))),
+                      child: Text("O", style: TextStyle(fontSize: 48))),
+                ],
+              )
+            ],
+          ),
+        ),
       ),
     );
   }
 }
 
-// ================= GAME SCREEN =================
+// ================= SETTINGS SCREEN =================
+class SettingsScreen extends StatefulWidget {
+  final AudioPlayer bgmPlayer;
+  SettingsScreen({required this.bgmPlayer});
+
+  @override
+  _SettingsScreenState createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  bool bgmOn = true;
+
+  @override
+  void initState() {
+    super.initState();
+    loadSettings();
+  }
+
+  void loadSettings() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      bgmOn = prefs.getBool("bgmOn") ?? true;
+    });
+    if (!bgmOn) widget.bgmPlayer.pause();
+  }
+
+  void toggleBgm(bool value) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      bgmOn = value;
+    });
+    await prefs.setBool("bgmOn", bgmOn);
+    if (bgmOn) {
+      widget.bgmPlayer.resume();
+    } else {
+      widget.bgmPlayer.pause();
+    }
+  }
+
+  void resetScores() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setInt("playerWins", 0);
+    await prefs.setInt("computerWins", 0);
+    await prefs.setInt("draws", 0);
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text("Scores Reset!")));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text("Settings"), backgroundColor: Colors.deepPurple),
+      body: Container(
+        padding: EdgeInsets.all(20),
+        decoration: BoxDecoration(
+            gradient: LinearGradient(
+                colors: [Colors.deepPurple, Colors.purpleAccent],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight)),
+        child: Column(
+          children: [
+            SwitchListTile(
+              title: Text("Background Music",
+                  style: TextStyle(color: Colors.white, fontSize: 18)),
+              value: bgmOn,
+              onChanged: toggleBgm,
+            ),
+            SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: resetScores,
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.redAccent,
+                  minimumSize: Size(double.infinity, 50)),
+              child: Text("Reset Scores",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ================= ABOUT SCREEN =================
+class AboutScreen extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text("About"), backgroundColor: Colors.deepPurple),
+      body: Container(
+        padding: EdgeInsets.all(20),
+        decoration: BoxDecoration(
+            gradient: LinearGradient(
+                colors: [Colors.deepPurple, Colors.purpleAccent],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight)),
+        child: Center(
+          child: Text(
+            "Tic Tac Toe Game\n\nDeveloped by Piyush Sharma\n\nEnjoy playing!",
+            textAlign: TextAlign.center,
+            style: TextStyle(color: Colors.white, fontSize: 20),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ================= GAME SCREEN (Expert AI) =================
 class GameScreen extends StatefulWidget {
   final bool vsComputer;
   final String playerSymbol;
@@ -469,18 +520,18 @@ class GameScreen extends StatefulWidget {
   _GameScreenState createState() => _GameScreenState();
 }
 
-class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
+class _GameScreenState extends State<GameScreen>
+    with SingleTickerProviderStateMixin {
   late List<String> board;
   late String currentTurn;
   late String opponentSymbol;
   bool gameOver = false;
   String resultMessage = "";
-  List<int> winningLine = [];
-
   final AudioPlayer tapPlayer = AudioPlayer();
   final AudioPlayer celebratePlayer = AudioPlayer();
-  final AudioPlayer errorPlayer = AudioPlayer();
-  Random random = Random();
+  List<int> winningLine = [];
+  late AnimationController _tapController;
+  late Animation<double> _tapAnimation;
 
   @override
   void initState() {
@@ -489,160 +540,88 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     currentTurn = "X";
     opponentSymbol = widget.playerSymbol == "X" ? "O" : "X";
 
+    _tapController =
+        AnimationController(vsync: this, duration: Duration(milliseconds: 200));
+    _tapAnimation =
+        Tween<double>(begin: 1.0, end: 1.2).animate(CurvedAnimation(
+      parent: _tapController,
+      curve: Curves.easeInOut,
+    ));
+
     if (widget.vsComputer && widget.playerSymbol == "O") {
-      Future.delayed(Duration(milliseconds: 300), () => computerMove());
+      Future.delayed(Duration(milliseconds: 400), () => computerMove());
     }
   }
 
-  @override
-  void dispose() {
-    tapPlayer.dispose();
-    celebratePlayer.dispose();
-    errorPlayer.dispose();
-    super.dispose();
-  }
-
-  void playTapSound() async {
+  void playTap() async {
     await tapPlayer.play(AssetSource("Tap.mp3"), mode: PlayerMode.lowLatency);
+    _tapController.forward().then((_) => _tapController.reverse());
   }
 
-  void playCelebrateSound() async {
+  void playCelebrate() async {
     await celebratePlayer.play(AssetSource("Celebration.mp3"));
-  }
-
-  void playErrorSound() async {
-    await errorPlayer.play(AssetSource("error.mp3"), mode: PlayerMode.lowLatency);
   }
 
   void handleTap(int index) {
     if (gameOver) return;
-
-    // Wait for turn warning
-    if (currentTurn != widget.playerSymbol) {
-      playErrorSound();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Wait for your turn!"))
-      );
-      return;
-    }
-
-    // Filled box warning
-    if (board[index] != "") {
-      playErrorSound();
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Box already filled!"))
-      );
-      return;
-    }
+    if (widget.vsComputer && currentTurn != widget.playerSymbol) return;
+    if (board[index] != "") return;
 
     setState(() {
       board[index] = currentTurn;
-      playTapSound();
+      playTap();
       checkWinner();
-      if (!gameOver) switchTurn();
+      if (!gameOver) {
+        currentTurn = currentTurn == "X" ? "O" : "X";
+        if (widget.vsComputer && currentTurn == opponentSymbol) {
+          Future.delayed(Duration(milliseconds: 400), () => computerMove());
+        }
+      }
     });
-
-    if (widget.vsComputer && !gameOver && currentTurn == opponentSymbol) {
-      Future.delayed(Duration(milliseconds: 300 + random.nextInt(400)), () => computerMove());
-    }
   }
 
-  void switchTurn() {
-    currentTurn = currentTurn == "X" ? "O" : "X";
-  }
-
-  // ================= AI LOGIC =================
   void computerMove() {
-    int move;
-    String diff = widget.difficulty ?? "Easy";
+    if (gameOver) return;
 
-    switch (diff) {
-      case "Easy":
-        move = randomMove();
-        break;
-      case "Medium":
-        move = mediumMove();
-        break;
-      case "Hard":
-        move = minimaxMove(depthLimit: 2, randomness: 0.2);
-        break;
-      case "Expert":
-        move = minimaxMove(depthLimit: 9);
-        break;
-      case "Super Expert":
-        move = minimaxMove(depthLimit: 9, guaranteedWin: true);
-        break;
-      default:
-        move = randomMove();
+    int move;
+    if (widget.difficulty == "Expert") {
+      move = getBestMove();
+    } else {
+      // fallback simple AI for Easy/Medium
+      List<int> empty = [];
+      for (int i = 0; i < 9; i++) {
+        if (board[i] == "") empty.add(i);
+      }
+      move = empty[DateTime.now().millisecondsSinceEpoch % empty.length];
     }
 
-    setState(() {
-      board[move] = currentTurn;
-      playTapSound();
-      checkWinner();
-      if (!gameOver) switchTurn();
-    });
+    handleTap(move);
   }
 
-  int randomMove() {
-    List<int> empty = [];
-    for (int i = 0; i < 9; i++) if (board[i] == "") empty.add(i);
-    return empty[random.nextInt(empty.length)];
-  }
+  int getBestMove() {
+    int bestScore = -1000;
+    int move = -1;
 
-  int mediumMove() {
-    // Win if possible
     for (int i = 0; i < 9; i++) {
       if (board[i] == "") {
         board[i] = opponentSymbol;
-        if (checkWinnerReturn() == opponentSymbol) {
-          board[i] = "";
-          return i;
-        }
+        int score = minimax(board, 0, false);
         board[i] = "";
+        if (score > bestScore) {
+          bestScore = score;
+          move = i;
+        }
       }
     }
-    // Block player
-    for (int i = 0; i < 9; i++) {
-      if (board[i] == "") {
-        board[i] = widget.playerSymbol;
-        if (checkWinnerReturn() == widget.playerSymbol) {
-          board[i] = "";
-          return i;
-        }
-        board[i] = "";
-      }
-    }
-    return randomMove();
+    return move;
   }
 
-  int minimaxMove({int depthLimit = 9, double randomness = 0.0, bool guaranteedWin = false}) {
-    List<int> empty = [];
-    for (int i = 0; i < 9; i++) if (board[i] == "") empty.add(i);
-    if (empty.isEmpty) return 0;
-
-    if (randomness > 0 && random.nextDouble() < randomness) return randomMove();
-
-    int bestScore = -1000;
-    int bestMove = empty[0];
-    for (int i in empty) {
-      board[i] = opponentSymbol;
-      int score = minimax(board, 0, false, depthLimit);
-      board[i] = "";
-      if (score > bestScore) {
-        bestScore = score;
-        bestMove = i;
-      }
-    }
-    return bestMove;
-  }
-
-  int minimax(List<String> b, int depth, bool isMaximizing, int depthLimit) {
-    String winner = checkWinnerReturn();
-    if (winner != "" || depth >= depthLimit) {
+  int minimax(List<String> b, int depth, bool isMaximizing) {
+    String? winner = evaluateWinner(b);
+    if (winner != null) {
       if (winner == opponentSymbol) return 10 - depth;
       if (winner == widget.playerSymbol) return depth - 10;
-      return 0;
+      if (winner == "Draw") return 0;
     }
 
     if (isMaximizing) {
@@ -650,8 +629,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       for (int i = 0; i < 9; i++) {
         if (b[i] == "") {
           b[i] = opponentSymbol;
-          bestScore = max(bestScore, minimax(b, depth + 1, false, depthLimit));
+          int score = minimax(b, depth + 1, false);
           b[i] = "";
+          bestScore = max(score, bestScore);
         }
       }
       return bestScore;
@@ -660,174 +640,157 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       for (int i = 0; i < 9; i++) {
         if (b[i] == "") {
           b[i] = widget.playerSymbol;
-          bestScore = min(bestScore, minimax(b, depth + 1, true, depthLimit));
+          int score = minimax(b, depth + 1, true);
           b[i] = "";
+          bestScore = min(score, bestScore);
         }
       }
       return bestScore;
     }
   }
 
-  // ================= WINNER CHECK =================
-  String checkWinnerReturn() {
+  String? evaluateWinner(List<String> b) {
     List<List<int>> wins = [
-      [0,1,2],[3,4,5],[6,7,8],
-      [0,3,6],[1,4,7],[2,5,8],
-      [0,4,8],[2,4,6]
+      [0, 1, 2],
+      [3, 4, 5],
+      [6, 7, 8],
+      [0, 3, 6],
+      [1, 4, 7],
+      [2, 5, 8],
+      [0, 4, 8],
+      [2, 4, 6],
     ];
-
     for (var line in wins) {
-      if (board[line[0]] != "" &&
-          board[line[0]] == board[line[1]] &&
-          board[line[1]] == board[line[2]]) {
-        return board[line[0]];
+      if (b[line[0]] != "" &&
+          b[line[0]] == b[line[1]] &&
+          b[line[1]] == b[line[2]]) {
+        winningLine = line;
+        return b[line[0]];
       }
     }
-
-    if (!board.contains("")) return "Draw";
-
-    return "";
+    if (!b.contains("")) return "Draw";
+    return null;
   }
 
-  void checkWinner() {
-    String winner = checkWinnerReturn();
-
-    if (winner != "") {
-      setState(() {
-        gameOver = true;
-        if (winner == "Draw") {
-          resultMessage = "It's a Draw!";
-        } else {
-          resultMessage = winner == widget.playerSymbol
-              ? "You Won! 🎉"
-              : widget.vsComputer
-                  ? "Computer Wins! 💻"
-                  : "$winner Wins!";
-          if (winner != "Draw") playCelebrateSound();
-        }
-        winningLine = getWinningLine();
-      });
-      Future.delayed(Duration(milliseconds: 500), () => showEndDialog());
-    }
-  }
-
-  List<int> getWinningLine() {
-    List<List<int>> wins = [
-      [0,1,2],[3,4,5],[6,7,8],
-      [0,3,6],[1,4,7],[2,5,8],
-      [0,4,8],[2,4,6]
-    ];
-
-    for (var line in wins) {
-      if (board[line[0]] != "" &&
-          board[line[0]] == board[line[1]] &&
-          board[line[1]] == board[line[2]]) {
-        return line;
+  void checkWinner() async {
+    String? winner = evaluateWinner(board);
+    if (winner != null) {
+      gameOver = true;
+      if (winner == "Draw") {
+        resultMessage = "Draw!";
+      } else if (winner == widget.playerSymbol) {
+        resultMessage = "You Win!";
+        playCelebrate();
+      } else {
+        resultMessage = "You Lose!";
+        playCelebrate();
       }
+      updateScores(winner);
+      setState(() {});
     }
-    return [];
   }
 
-  void showEndDialog() {
-    showDialog(
-      barrierDismissible: false,
-      context: context,
-      builder: (_) => AlertDialog(
-        backgroundColor: Colors.deepPurple.shade800,
-        title: Text("Game Over", style: TextStyle(color: Colors.white)),
-        content: Text(resultMessage, style: TextStyle(color: Colors.white70)),
-        actions: [
-          TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                setState(() {
-                  board = List.filled(9, "");
-                  gameOver = false;
-                  currentTurn = "X";
-                  winningLine = [];
-                  if (widget.vsComputer && widget.playerSymbol == "O") {
-                    Future.delayed(Duration(milliseconds: 300),
-                        () => computerMove());
-                  }
-                });
-              },
-              child: Text("Play Again")),
-          TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-                Navigator.pop(context);
-              },
-              child: Text("Exit"))
-        ],
+  void updateScores(String winner) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    int pw = prefs.getInt("playerWins") ?? 0;
+    int cw = prefs.getInt("computerWins") ?? 0;
+    int dr = prefs.getInt("draws") ?? 0;
+
+    if (winner == widget.playerSymbol) pw++;
+    if (winner == opponentSymbol) cw++;
+    if (winner == "Draw") dr++;
+
+    await prefs.setInt("playerWins", pw);
+    await prefs.setInt("computerWins", cw);
+    await prefs.setInt("draws", dr);
+  }
+
+  Widget buildCell(int index) {
+    bool highlight = winningLine.contains(index);
+    return GestureDetector(
+      onTap: () => handleTap(index),
+      child: AnimatedScale(
+        scale: _tapAnimation.value,
+        duration: Duration(milliseconds: 200),
+        child: Container(
+          decoration: BoxDecoration(
+              border: Border.all(color: Colors.white),
+              color: highlight ? Colors.greenAccent : Colors.transparent),
+          child: Center(
+            child: Text(
+              board[index],
+              style: TextStyle(
+                  color: board[index] == "X" ? Colors.red : Colors.blue,
+                  fontSize: 48,
+                  fontWeight: FontWeight.bold),
+            ),
+          ),
+        ),
       ),
     );
   }
 
-  Color getTileColor(int index) {
-    if (winningLine.contains(index)) return Colors.greenAccent.shade400;
-    return Colors.transparent;
+  void resetGame() {
+    setState(() {
+      board = List.filled(9, "");
+      currentTurn = "X";
+      winningLine = [];
+      gameOver = false;
+      resultMessage = "";
+      if (widget.vsComputer && widget.playerSymbol == "O") {
+        Future.delayed(Duration(milliseconds: 400), () => computerMove());
+      }
+    });
   }
 
-  Color getSymbolColor(String symbol) {
-    return symbol == "X" ? Colors.blue : Colors.red;
+  @override
+  void dispose() {
+    _tapController.dispose();
+    tapPlayer.dispose();
+    celebratePlayer.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    double size = MediaQuery.of(context).size.width / 3 - 16;
-
     return Scaffold(
       appBar: AppBar(
-        title: Text("Tic Tac Toe"),
+        title: Text(widget.vsComputer ? "Vs Computer" : "2 Player"),
         backgroundColor: Colors.deepPurple,
       ),
       body: Container(
+        padding: EdgeInsets.all(10),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Colors.deepPurple, Colors.purpleAccent],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
-        ),
-        padding: EdgeInsets.all(8),
+            gradient: LinearGradient(
+                colors: [Colors.deepPurple, Colors.purpleAccent],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight)),
         child: Column(
           children: [
             SizedBox(height: 20),
-            Text(
-              currentTurn == widget.playerSymbol ? "Your Turn" : widget.vsComputer ? "Computer's Turn" : "$currentTurn's Turn",
-              style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: currentTurn == widget.playerSymbol ? Colors.greenAccent : Colors.redAccent),
-            ),
-            SizedBox(height: 16),
+            if (gameOver)
+              Text(resultMessage,
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold)),
+            SizedBox(height: 20),
             Expanded(
               child: GridView.builder(
-                itemCount: 9,
-                gridDelegate:
-                    SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3),
-                itemBuilder: (_, index) => GestureDetector(
-                  onTap: () => handleTap(index),
-                  child: Container(
-                    margin: EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: getTileColor(index),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.deepPurple, width: 2),
-                    ),
-                    child: Center(
-                      child: Text(
-                        board[index],
-                        style: TextStyle(
-                            color: getSymbolColor(board[index]),
-                            fontSize: 50,
-                            fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
+                  itemCount: 9,
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 3),
+                  itemBuilder: (_, index) => buildCell(index)),
             ),
+            SizedBox(height: 20),
+            ElevatedButton(
+                onPressed: resetGame,
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.greenAccent.shade700,
+                    minimumSize: Size(double.infinity, 50)),
+                child: Text("Restart Game",
+                    style:
+                        TextStyle(fontSize: 20, fontWeight: FontWeight.bold))),
           ],
         ),
       ),
