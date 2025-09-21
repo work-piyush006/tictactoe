@@ -6,7 +6,7 @@ version: 1.0.0+1
 
 environment:
   sdk: ">=2.19.0 <4.0.0"
-  flutter: ">=3.0.0"
+  flutter: ">=3.0.0 <4.0.0"
 
 dependencies:
   flutter:
@@ -15,7 +15,7 @@ dependencies:
   shared_preferences: ^2.2.1
   confetti: ^0.7.0
   connectivity_plus: ^4.0.2
-  google_mobile_ads: ^6.0.0
+  google_mobile_ads: ^5.0.0
   cupertino_icons: ^1.0.5
 
 dev_dependencies:
