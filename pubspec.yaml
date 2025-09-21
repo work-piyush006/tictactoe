@@ -11,11 +11,11 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  audioplayers: ^5.0.1       # Compatible with Dart 3.1.4
+  audioplayers: ^5.0.1
   shared_preferences: ^2.2.1
   confetti: ^0.7.0
   connectivity_plus: ^4.0.2
-  google_mobile_ads: ^5.0.0  # Compatible version
+  google_mobile_ads: ^4.0.0   # Compatible with Flutter SDK pin
   cupertino_icons: ^1.0.5
 
 dev_dependencies:
