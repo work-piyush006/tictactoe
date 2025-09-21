@@ -102,9 +102,12 @@ class _SplashScreenState extends State<SplashScreen>
 }
 
 // ================== HOME SCREEN ==================
+// ================== HOME SCREEN ==================
 class HomeScreen extends StatefulWidget {
   final AudioPlayer bgmPlayer;
-  HomeScreen({required this.bgmPlayer});
+  final ValueNotifier<bool> bgmNotifier;
+
+  HomeScreen({required this.bgmPlayer, required this.bgmNotifier});
 
   @override
   _HomeScreenState createState() => _HomeScreenState();
@@ -119,15 +122,24 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     loadScores();
 
+    widget.bgmNotifier.addListener(() {
+      if (widget.bgmNotifier.value) {
+        widget.bgmPlayer.resume();
+      } else {
+        widget.bgmPlayer.pause();
+      }
+    });
+
     // Ensure BGM plays immediately when HomeScreen opens
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      widget.bgmPlayer.resume();
+      if (widget.bgmNotifier.value) widget.bgmPlayer.resume();
     });
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    widget.bgmNotifier.removeListener(() {});
     super.dispose();
   }
 
@@ -136,7 +148,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (state == AppLifecycleState.paused) {
       widget.bgmPlayer.pause();
     } else if (state == AppLifecycleState.resumed) {
-      widget.bgmPlayer.resume();
+      if (widget.bgmNotifier.value) widget.bgmPlayer.resume();
     }
   }
 
@@ -152,7 +164,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void navigateTo(Widget screen) {
     Navigator.push(context, MaterialPageRoute(builder: (_) => screen))
         .then((_) {
-      widget.bgmPlayer.resume();
+      if (widget.bgmNotifier.value) widget.bgmPlayer.resume();
       loadScores();
     });
   }
@@ -184,7 +196,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               SizedBox(height: 40),
               ElevatedButton(
                 onPressed: () => navigateTo(
-                    ModeSelectionScreen(bgmPlayer: widget.bgmPlayer)),
+                    ModeSelectionScreen(bgmPlayer: widget.bgmPlayer, bgmNotifier: widget.bgmNotifier)),
                 style: ElevatedButton.styleFrom(
                     minimumSize: Size(220, 55),
                     backgroundColor: Colors.greenAccent.shade700,
@@ -198,7 +210,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ElevatedButton(
                 onPressed: () =>
                     navigateTo(TwoPlayerSymbolSelectionScreen(
-                        bgmPlayer: widget.bgmPlayer)),
+                        bgmPlayer: widget.bgmPlayer, bgmNotifier: widget.bgmNotifier)),
                 style: ElevatedButton.styleFrom(
                     minimumSize: Size(220, 55),
                     backgroundColor: Colors.blueAccent.shade700,
@@ -211,7 +223,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               SizedBox(height: 20),
               ElevatedButton(
                 onPressed: () =>
-                    navigateTo(SettingsScreen(bgmPlayer: widget.bgmPlayer)),
+                    navigateTo(SettingsScreen(bgmPlayer: widget.bgmPlayer, bgmNotifier: widget.bgmNotifier)),
                 style: ElevatedButton.styleFrom(
                     minimumSize: Size(220, 55),
                     backgroundColor: Colors.orangeAccent.shade700,
@@ -242,13 +254,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 }
 
 // ================= PART 1: SETTINGS + ABOUT =================
+
 class SettingsScreen extends StatefulWidget {
   final AudioPlayer bgmPlayer;
   final bool vsComputerMode;
   final bool playWithFriendsMode;
+  final ValueNotifier<bool> bgmNotifier;
 
   SettingsScreen({
     required this.bgmPlayer,
+    required this.bgmNotifier,
     this.vsComputerMode = false,
     this.playWithFriendsMode = false,
   });
@@ -263,22 +278,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
-    // VS Computer aur Play with Friends → BGM automatically off
+    bgmOn = widget.bgmNotifier.value;
+
     if (widget.vsComputerMode || widget.playWithFriendsMode) {
       bgmOn = false;
       widget.bgmPlayer.pause();
     }
   }
 
-  void toggleBGM(bool value) {
+  Future<void> toggleBGM(bool value) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
       bgmOn = value;
-      if (bgmOn) {
-        widget.bgmPlayer.resume();
-      } else {
-        widget.bgmPlayer.pause();
-      }
+      prefs.setBool("bgmOn", bgmOn);
+      widget.bgmNotifier.value = bgmOn; // notify all listeners
     });
+    if (bgmOn) {
+      widget.bgmPlayer.resume();
+    } else {
+      widget.bgmPlayer.pause();
+    }
   }
 
   @override
@@ -293,23 +312,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
               title: Text("Background Music (BGM)"),
               value: bgmOn,
               onChanged: (widget.vsComputerMode || widget.playWithFriendsMode)
-                  ? null // disable toggle in these modes
+                  ? null
                   : toggleBGM,
             ),
-            SizedBox(height: 20),
-            Text(
-              widget.vsComputerMode || widget.playWithFriendsMode
-                  ? "BGM is disabled in this mode"
-                  : "",
-              style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold),
-            )
+            if (widget.vsComputerMode || widget.playWithFriendsMode)
+              Text(
+                "BGM is disabled in this mode",
+                style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold),
+              ),
           ],
         ),
       ),
     );
   }
 }
-
 class AboutScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -562,18 +578,20 @@ class TwoPlayerSymbolSelectionScreen extends StatelessWidget {
   }
 }
 
-// ================= Updated GameScreen =================
+// ================= Fully Updated GameScreen =================
 class GameScreen extends StatefulWidget {
   final bool vsComputer;
   final String playerSymbol;
   final String? difficulty;
   final AudioPlayer bgmPlayer;
+  final ValueNotifier<bool> bgmEnabled;
 
   GameScreen({
     required this.vsComputer,
     required this.playerSymbol,
     this.difficulty,
     required this.bgmPlayer,
+    required this.bgmEnabled,
   });
 
   @override
@@ -595,8 +613,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   int seconds = 10;
   Timer? turnTimer;
 
-  TextEditingController playerNameController = TextEditingController();
-  late String computerName;
+  TextEditingController player1Controller = TextEditingController();
+  TextEditingController player2Controller = TextEditingController();
 
   // Confetti
   late ConfettiController confettiController;
@@ -615,8 +633,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     computerSymbol = playerSymbol == "X" ? "O" : "X";
     currentPlayer = "X";
 
-    computerName = widget.vsComputer ? "${widget.difficulty} AI" : "Player 2";
-    playerNameController.text = "Player";
+    player1Controller.text = "Player 1";
+    player2Controller.text =
+        widget.vsComputer ? "${widget.difficulty} AI" : "Player 2";
 
     sfxPlayer = AudioPlayer();
     confettiController = ConfettiController(duration: Duration(seconds: 2));
@@ -635,8 +654,16 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     loadScores();
     startTurnTimer();
 
-    widget.bgmPlayer.pause();
+    // stop BGM on game screen
+    if (widget.bgmEnabled.value) widget.bgmPlayer.pause();
 
+    widget.bgmEnabled.addListener(() {
+      if (!mounted) return;
+      if (widget.bgmEnabled.value) widget.bgmPlayer.resume();
+      else widget.bgmPlayer.pause();
+    });
+
+    // Computer first move if applicable
     if (widget.vsComputer && currentPlayer == computerSymbol) {
       Future.delayed(Duration(milliseconds: 500), computerMove);
     }
@@ -648,7 +675,11 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     glowController.dispose();
     confettiController.dispose();
     sfxPlayer.dispose();
-    playerNameController.dispose();
+    player1Controller.dispose();
+    player2Controller.dispose();
+
+    if (widget.bgmEnabled.value) widget.bgmPlayer.resume();
+
     super.dispose();
   }
 
@@ -676,8 +707,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     turnTimer = Timer.periodic(Duration(seconds: 1), (timer) async {
       if (!mounted) return;
 
-      if (seconds <= 3 && seconds > 0) {
-        await sfxPlayer.play(AssetSource('Tap.mp3'));
+      if (seconds <= 3 && seconds > 0 && widget.bgmEnabled.value) {
+        await sfxPlayer.play(AssetSource('Tap.mp3'), mode: PlayerMode.lowLatency);
       }
 
       setState(() => seconds--);
@@ -690,11 +721,13 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
   void resetTurnTimer() {
     turnTimer?.cancel();
-    startTurnTimer();
+    if (!gameOver) startTurnTimer();
   }
 
   void playSfx(String file) async {
-    await sfxPlayer.play(AssetSource(file));
+    if (widget.bgmEnabled.value) {
+      await sfxPlayer.play(AssetSource(file), mode: PlayerMode.lowLatency);
+    }
   }
 
   // ------------------- Game Logic -------------------
@@ -742,10 +775,12 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   void computerMove() {
     if (gameOver) return;
 
+    List<int> empty = [for (int i = 0; i < 9; i++) if (board[i] == "") i];
+    if (empty.isEmpty) return;
+
     int index;
     switch (widget.difficulty) {
       case "Easy":
-        List<int> empty = [for (int i = 0; i < 9; i++) if (board[i] == "") i];
         index = empty[Random().nextInt(empty.length)];
         break;
       case "Medium":
@@ -758,7 +793,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         index = minimaxMove(depth: 9);
         break;
       default:
-        index = Random().nextInt(9);
+        index = empty[Random().nextInt(empty.length)];
     }
 
     setState(() {
@@ -775,7 +810,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   int minimaxMove({int depth = 9}) {
     int bestScore = -1000;
     int move = -1;
-
     for (int i = 0; i < 9; i++) {
       if (board[i] == "") {
         board[i] = computerSymbol;
@@ -787,8 +821,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         }
       }
     }
-
-    return move;
+    return move == -1 ? 0 : move;
   }
 
   int minimax(int currentDepth, bool isMax, int maxDepth) {
@@ -849,7 +882,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
   void checkWinner() {
     String? result = evaluateBoard();
-    if (result != null) {
+    if (result != null && !gameOver) {
       setState(() {
         winner = result;
         gameOver = true;
@@ -861,8 +894,10 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           draws++;
 
         saveScores();
-        if (winner != "Draw") playSfx('Celebration.mp3');
-        else playSfx('draw.mp3');
+        if (winner != "Draw")
+          playSfx('Celebration.mp3');
+        else
+          playSfx('draw.mp3');
 
         List<List<int>> patterns = [
           [0, 1, 2],
@@ -897,6 +932,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       seconds = 10;
     });
     resetTurnTimer();
+    confettiController.stop();
 
     if (widget.vsComputer && currentPlayer == computerSymbol) {
       Future.delayed(Duration(milliseconds: 500), computerMove);
@@ -943,10 +979,11 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                   children: [
                     Expanded(
                       child: TextField(
-                        controller: playerNameController,
+                        controller: player1Controller,
+                        onChanged: (_) => setState(() {}),
                         style: TextStyle(color: Colors.white),
                         decoration: InputDecoration(
-                          labelText: 'Player Name',
+                          labelText: 'Player 1',
                           labelStyle: TextStyle(color: Colors.white70),
                           enabledBorder: OutlineInputBorder(
                             borderSide: BorderSide(color: Colors.white),
@@ -958,10 +995,24 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                       ),
                     ),
                     SizedBox(width: 10),
-                    Text(
-                      computerName,
-                      style: TextStyle(color: Colors.white, fontSize: 18),
-                    )
+                    Expanded(
+                      child: TextField(
+                        controller: player2Controller,
+                        readOnly: widget.vsComputer,
+                        onChanged: (_) => setState(() {}),
+                        style: TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          labelText: widget.vsComputer ? 'AI' : 'Player 2',
+                          labelStyle: TextStyle(color: Colors.white70),
+                          enabledBorder: OutlineInputBorder(
+                            borderSide: BorderSide(color: Colors.white),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderSide: BorderSide(color: Colors.white),
+                          ),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -972,36 +1023,42 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    scoreCard(playerNameController.text, playerWins),
+                    scoreCard(player1Controller.text, playerWins),
                     scoreCard('Draw', draws),
-                    scoreCard(computerName, computerWins),
+                    scoreCard(player2Controller.text, computerWins),
                   ],
                 ),
               ),
 
-              // Hourglass + Timer
+              // Turn + Timer
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Column(
                     children: [
                       Text(
-                        'Turn: ${currentPlayer == playerSymbol ? playerNameController.text : computerName}',
+                        gameOver
+                            ? (winner == "Draw"
+                                ? "It's a Draw!"
+                                : "${winner == playerSymbol ? player1Controller.text : player2Controller.text} Wins!")
+                            : 'Turn: ${currentPlayer == playerSymbol ? player1Controller.text : player2Controller.text}',
                         style: TextStyle(
                             color: Colors.white,
                             fontSize: 18,
                             fontWeight: FontWeight.bold),
                       ),
-                      SizedBox(height: 10),
-                      SmoothHourglass(secondsLeft: seconds),
-                      SizedBox(height: 5),
-                      Text(
-                        '$seconds s',
-                        style: TextStyle(
-                          color: seconds <= 3 ? Colors.red : Colors.white,
-                          fontWeight: FontWeight.bold,
+                      if (!gameOver) ...[
+                        SizedBox(height: 10),
+                        SmoothHourglass(secondsLeft: seconds),
+                        SizedBox(height: 5),
+                        Text(
+                          '$seconds s',
+                          style: TextStyle(
+                            color: seconds <= 3 ? Colors.red : Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
+                      ],
                     ],
                   ),
                 ],
@@ -1016,9 +1073,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 child: GridView.builder(
                   physics: NeverScrollableScrollPhysics(),
                   gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 3,
-                      crossAxisSpacing: 8,
-                      mainAxisSpacing: 8),
+                      crossAxisCount: 3, crossAxisSpacing: 8, mainAxisSpacing: 8),
                   itemCount: 9,
                   itemBuilder: (context, index) {
                     bool isWinningCell = winningPattern.contains(index);
