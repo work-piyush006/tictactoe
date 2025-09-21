@@ -128,7 +128,6 @@ class _SplashScreenState extends State<SplashScreen>
   }
 }
 // ================== HOME SCREEN ==================
-
 class HomeScreen extends StatefulWidget {
   final AudioPlayer bgmPlayer;
   final ValueNotifier<bool> bgmNotifier;
@@ -176,7 +175,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     widget.bgmNotifier.removeListener(_bgmListener);
-    sfxPlayer.dispose(); // Dispose SFX player
+    sfxPlayer.dispose();
     super.dispose();
   }
 
@@ -224,7 +223,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   // Helper to play SFX
   Future<void> playSfx(String assetPath) async {
     try {
-      await sfxPlayer.stop(); // Stop previous sound
+      await sfxPlayer.stop();
       await sfxPlayer.play(AssetSource(assetPath));
     } catch (e) {
       print("SFX error: $e");
@@ -270,7 +269,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     SizedBox(height: 40),
                     ElevatedButton(
                       onPressed: () {
-                        playSfx("sounds/tap.mp3"); // Example SFX
+                        playSfx("sounds/tap.mp3");
                         navigateTo(
                           ModeSelectionScreen(
                             bgmPlayer: widget.bgmPlayer,
@@ -281,14 +280,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       style: menuButton(Colors.greenAccent.shade700),
                       child: Text(
                         "▶ Play Game",
-                        style: TextStyle(
-                            fontSize: 22, fontWeight: FontWeight.bold),
+                        style:
+                            TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                       ),
                     ),
                     SizedBox(height: 20),
                     ElevatedButton(
                       onPressed: () {
-                        playSfx("sounds/tap.mp3"); // Example SFX
+                        playSfx("sounds/tap.mp3");
                         navigateTo(
                           TwoPlayerSymbolSelectionScreen(
                             bgmPlayer: widget.bgmPlayer,
@@ -299,14 +298,14 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       style: menuButton(Colors.blueAccent.shade700),
                       child: Text(
                         "👥 2 Player Game",
-                        style: TextStyle(
-                            fontSize: 22, fontWeight: FontWeight.bold),
+                        style:
+                            TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                       ),
                     ),
                     SizedBox(height: 20),
                     ElevatedButton(
                       onPressed: () {
-                        playSfx("sounds/tap.mp3"); // Example SFX
+                        playSfx("sounds/tap.mp3");
                         navigateTo(
                           SettingsScreen(
                             bgmPlayer: widget.bgmPlayer,
@@ -317,21 +316,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       style: menuButton(Colors.orangeAccent.shade700),
                       child: Text(
                         "⚙ Settings",
-                        style: TextStyle(
-                            fontSize: 22, fontWeight: FontWeight.bold),
+                        style:
+                            TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                       ),
                     ),
                     SizedBox(height: 20),
                     ElevatedButton(
                       onPressed: () {
-                        playSfx("sounds/tap.mp3"); // Example SFX
+                        playSfx("sounds/tap.mp3");
                         navigateTo(AboutScreen());
                       },
                       style: menuButton(Colors.purpleAccent.shade700),
                       child: Text(
                         "🏆 About",
-                        style: TextStyle(
-                            fontSize: 22, fontWeight: FontWeight.bold),
+                        style:
+                            TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ],
@@ -344,7 +343,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 }
-// ================= PART 1: SETTINGS + ABOUT =================
+// ================= PART 1: SETTINGS + ABOUT =================  
 
 class SettingsScreen extends StatefulWidget {
   final AudioPlayer bgmPlayer;
@@ -391,6 +390,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
+  Future<void> resetScores() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setInt("playerWins", 0);
+    await prefs.setInt("computerWins", 0);
+    await prefs.setInt("draws", 0);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Scores reset successfully!")),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -411,18 +420,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 "BGM is disabled in this mode",
                 style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold),
               ),
+            SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: resetScores,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                minimumSize: Size(double.infinity, 50),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: Text(
+                "Reset Scores",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 }
+
 class AboutScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text("About"), backgroundColor: Colors.deepPurple),
-      body: SingleChildScrollView(   // 👈 yeh lagao
+      body: SingleChildScrollView(
         padding: EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -460,9 +485,9 @@ class AboutScreen extends StatelessWidget {
 
 class ModeSelectionScreen extends StatelessWidget {
   final AudioPlayer bgmPlayer;
-  final ValueNotifier<bool> bgmNotifier; // add this
+  final ValueNotifier<bool> bgmNotifier;
 
-  ModeSelectionScreen({required this.bgmPlayer, required this.bgmNotifier}); // updated
+  ModeSelectionScreen({required this.bgmPlayer, required this.bgmNotifier});
 
   void startGame(BuildContext context, String difficulty) {
     bgmPlayer.pause();
@@ -473,7 +498,7 @@ class ModeSelectionScreen extends StatelessWidget {
                   vsComputer: true,
                   difficulty: difficulty,
                   bgmPlayer: bgmPlayer,
-                  bgmNotifier: bgmNotifier, // pass bgmNotifier forward
+                  bgmNotifier: bgmNotifier,
                 )));
   }
 
@@ -518,24 +543,25 @@ class SymbolSelectionScreen extends StatelessWidget {
   final bool vsComputer;
   final String? difficulty;
   final AudioPlayer bgmPlayer;
-  final ValueNotifier<bool> bgmNotifier; // added
+  final ValueNotifier<bool> bgmNotifier;
 
-  SymbolSelectionScreen({
+  const SymbolSelectionScreen({
+    Key? key,
     required this.vsComputer,
     this.difficulty,
     required this.bgmPlayer,
-    required this.bgmNotifier, // added
-  });
+    required this.bgmNotifier,
+  }) : super(key: key);
 
-  void startGame(BuildContext context, String playerSymbol) async {
-    // Settings check for BGM
+  Future<void> startGame(BuildContext context, String playerSymbol) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     bool bgmOn = prefs.getBool("bgmOn") ?? true;
 
-    // VS Computer mode → pause BGM if necessary
     if (vsComputer || difficulty != null || !bgmOn) {
       bgmPlayer.pause();
     }
+
+    if (!context.mounted) return; // safety check
 
     Navigator.pushReplacement(
       context,
@@ -545,7 +571,7 @@ class SymbolSelectionScreen extends StatelessWidget {
           playerSymbol: playerSymbol,
           difficulty: difficulty,
           bgmPlayer: bgmPlayer,
-          bgmNotifier: bgmNotifier, // pass forward
+          bgmNotifier: bgmNotifier,
         ),
       ),
     );
@@ -556,7 +582,7 @@ class SymbolSelectionScreen extends StatelessWidget {
     final List<String> symbols = ["X", "O"];
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             colors: [Colors.deepPurple, Colors.purpleAccent],
             begin: Alignment.topLeft,
@@ -571,13 +597,13 @@ class SymbolSelectionScreen extends StatelessWidget {
                 vsComputer
                     ? "Choose Your Symbol (Vs Computer)"
                     : "Player 1: Choose Your Symbol",
-                style: TextStyle(
+                style: const TextStyle(
                     color: Colors.white,
                     fontSize: 28,
                     fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
-              SizedBox(height: 30),
+              const SizedBox(height: 30),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: symbols.map((symbol) {
@@ -589,11 +615,12 @@ class SymbolSelectionScreen extends StatelessWidget {
                         backgroundColor: symbol == "X"
                             ? Colors.redAccent
                             : Colors.blueAccent,
-                        minimumSize: Size(120, 120),
+                        minimumSize: const Size(120, 120),
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20)),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
                       ),
-                      child: Text(symbol, style: TextStyle(fontSize: 48)),
+                      child: Text(symbol, style: const TextStyle(fontSize: 48)),
                     ),
                   );
                 }).toList(),
@@ -608,16 +635,18 @@ class SymbolSelectionScreen extends StatelessWidget {
 
 class TwoPlayerSymbolSelectionScreen extends StatelessWidget {
   final AudioPlayer bgmPlayer;
-  final ValueNotifier<bool> bgmNotifier; // added
+  final ValueNotifier<bool> bgmNotifier;
 
-  TwoPlayerSymbolSelectionScreen({
+  const TwoPlayerSymbolSelectionScreen({
+    Key? key,
     required this.bgmPlayer,
-    required this.bgmNotifier, // added
-  });
+    required this.bgmNotifier,
+  }) : super(key: key);
 
-  void startTwoPlayerGame(BuildContext context, String player1Symbol) async {
-    // Always pause BGM in 2-player mode
+  void startTwoPlayerGame(BuildContext context, String player1Symbol) {
     bgmPlayer.pause();
+
+    if (!context.mounted) return;
 
     Navigator.pushReplacement(
       context,
@@ -627,7 +656,7 @@ class TwoPlayerSymbolSelectionScreen extends StatelessWidget {
           playerSymbol: player1Symbol,
           difficulty: null,
           bgmPlayer: bgmPlayer,
-          bgmNotifier: bgmNotifier, // pass forward
+          bgmNotifier: bgmNotifier,
         ),
       ),
     );
@@ -638,7 +667,7 @@ class TwoPlayerSymbolSelectionScreen extends StatelessWidget {
     final List<String> symbols = ["X", "O"];
     return Scaffold(
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
             colors: [Colors.deepPurple, Colors.purpleAccent],
             begin: Alignment.topLeft,
@@ -649,7 +678,7 @@ class TwoPlayerSymbolSelectionScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(
+              const Text(
                 "Player 1: Choose Your Symbol",
                 style: TextStyle(
                     color: Colors.white,
@@ -657,7 +686,7 @@ class TwoPlayerSymbolSelectionScreen extends StatelessWidget {
                     fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
-              SizedBox(height: 30),
+              const SizedBox(height: 30),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: symbols.map((symbol) {
@@ -669,11 +698,12 @@ class TwoPlayerSymbolSelectionScreen extends StatelessWidget {
                         backgroundColor: symbol == "X"
                             ? Colors.redAccent
                             : Colors.blueAccent,
-                        minimumSize: Size(120, 120),
+                        minimumSize: const Size(120, 120),
                         shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20)),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
                       ),
-                      child: Text(symbol, style: TextStyle(fontSize: 48)),
+                      child: Text(symbol, style: const TextStyle(fontSize: 48)),
                     ),
                   );
                 }).toList(),
@@ -685,7 +715,6 @@ class TwoPlayerSymbolSelectionScreen extends StatelessWidget {
     );
   }
 }
-
 // ================= Fully Fixed GameScreen with Reliable Audio =================
 class GameScreen extends StatefulWidget {
   final bool vsComputer;
