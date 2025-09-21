@@ -202,26 +202,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   void navigateTo(Widget screen) {
     Navigator.push(context, MaterialPageRoute(builder: (_) => screen))
-        .then((_) {
-      if (widget.bgmNotifier.value) {
-        widget.bgmPlayer.resume();
-      } else {
-        widget.bgmPlayer.pause();
-      }
-      loadScores();
-    });
+        .then((_) => loadScores());
   }
 
-  // Helper for button styling
+  // Button styling helper
   ButtonStyle menuButton(Color color) {
     return ElevatedButton.styleFrom(
-      minimumSize: Size(220, 55),
+      minimumSize: Size(double.infinity, 55),
       backgroundColor: color,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     );
   }
 
-  // Helper to play SFX
   Future<void> playSfx(String assetPath) async {
     try {
       await sfxPlayer.stop();
@@ -229,6 +221,18 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     } catch (e) {
       print("SFX error: $e");
     }
+  }
+
+  Widget scoreCard(String name, int score) {
+    return Column(
+      children: [
+        Text(name, style: TextStyle(color: Colors.white, fontSize: 16)),
+        SizedBox(height: 4),
+        Text("$score",
+            style: TextStyle(
+                color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+      ],
+    );
   }
 
   @override
@@ -245,93 +249,107 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             ),
           ),
           child: SingleChildScrollView(
-            child: Center(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 16),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      "Tic Tac Toe",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 36,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 2,
-                      ),
-                    ),
-                    SizedBox(height: 25),
-                    Text(
-                      "Player: $playerWins  |  Computer: $computerWins  |  Draws: $draws",
-                      style: TextStyle(color: Colors.white70, fontSize: 18),
-                      textAlign: TextAlign.center,
-                    ),
-                    SizedBox(height: 40),
-                    ElevatedButton(
-                      onPressed: () {
-                        playSfx("sounds/tap.mp3");
-                        navigateTo(
-                          ModeSelectionScreen(
-                            bgmPlayer: widget.bgmPlayer,
-                            bgmNotifier: widget.bgmNotifier,
-                          ),
-                        );
-                      },
-                      style: menuButton(Colors.greenAccent.shade700),
-                      child: Text(
-                        "▶ Play Game",
-                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    SizedBox(height: 20),
-                    ElevatedButton(
-                      onPressed: () {
-                        playSfx("sounds/tap.mp3");
-                        navigateTo(
-                          TwoPlayerSymbolSelectionScreen(
-                            bgmPlayer: widget.bgmPlayer,
-                            bgmNotifier: widget.bgmNotifier,
-                          ),
-                        );
-                      },
-                      style: menuButton(Colors.blueAccent.shade700),
-                      child: Text(
-                        "👥 2 Player Game",
-                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    SizedBox(height: 20),
-                    ElevatedButton(
-                      onPressed: () {
-                        playSfx("sounds/tap.mp3");
-                        navigateTo(
-                          SettingsScreen(
-                            bgmPlayer: widget.bgmPlayer,
-                            bgmNotifier: widget.bgmNotifier,
-                          ),
-                        );
-                      },
-                      style: menuButton(Colors.orangeAccent.shade700),
-                      child: Text(
-                        "⚙ Settings",
-                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    SizedBox(height: 20),
-                    ElevatedButton(
-                      onPressed: () {
-                        playSfx("sounds/tap.mp3");
-                        navigateTo(AboutScreen());
-                      },
-                      style: menuButton(Colors.purpleAccent.shade700),
-                      child: Text(
-                        "🏆 About",
-                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                  ],
+            padding: EdgeInsets.symmetric(vertical: 40, horizontal: 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Logo & Title
+                Image.asset("assets/logo.png", width: 120, height: 120),
+                SizedBox(height: 20),
+                Text(
+                  "Tic Tac Toe",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 36,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 3,
+                  ),
                 ),
-              ),
+                SizedBox(height: 30),
+
+                // Scoreboard
+                Container(
+                  padding: EdgeInsets.symmetric(vertical: 15, horizontal: 10),
+                  decoration: BoxDecoration(
+                      color: Colors.white24,
+                      borderRadius: BorderRadius.circular(12)),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      scoreCard("Player", playerWins),
+                      scoreCard("Computer", computerWins),
+                      scoreCard("Draws", draws),
+                    ],
+                  ),
+                ),
+                SizedBox(height: 40),
+
+                // Buttons
+                ElevatedButton(
+                  onPressed: () {
+                    playSfx("sounds/tap.mp3");
+                    navigateTo(
+                      ModeSelectionScreen(
+                        bgmPlayer: widget.bgmPlayer,
+                        bgmNotifier: widget.bgmNotifier,
+                      ),
+                    );
+                  },
+                  style: menuButton(Colors.greenAccent.shade700),
+                  child: Text(
+                    "▶ Play Game",
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () {
+                    playSfx("sounds/tap.mp3");
+                    navigateTo(
+                      TwoPlayerSymbolSelectionScreen(
+                        bgmPlayer: widget.bgmPlayer,
+                        bgmNotifier: widget.bgmNotifier,
+                      ),
+                    );
+                  },
+                  style: menuButton(Colors.blueAccent.shade700),
+                  child: Text(
+                    "👥 2 Player Game",
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () {
+                    playSfx("sounds/tap.mp3");
+                    navigateTo(
+                      SettingsScreen(
+                        bgmPlayer: widget.bgmPlayer,
+                        bgmNotifier: widget.bgmNotifier,
+                      ),
+                    );
+                  },
+                  style: menuButton(Colors.orangeAccent.shade700),
+                  child: Text(
+                    "⚙ Settings",
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () {
+                    playSfx("sounds/tap.mp3");
+                    navigateTo(AboutScreen());
+                  },
+                  style: menuButton(Colors.purpleAccent.shade700),
+                  child: Text(
+                    "🏆 About",
+                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                SizedBox(height: 40),
+              ],
             ),
           ),
         ),
@@ -760,6 +778,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   void initState() {
     super.initState();
 
+    // Set player symbols
     playerSymbol = widget.playerSymbol;
     computerSymbol = playerSymbol == "X" ? "O" : "X";
     currentPlayer = "X";
@@ -768,9 +787,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     player2Controller.text =
         widget.vsComputer ? "${widget.difficulty} AI" : "Player 2";
 
+    // Initialize audio & controllers
     tapPlayer = AudioPlayer();
     sfxPlayer = AudioPlayer();
-
     confettiController = ConfettiController(duration: Duration(seconds: 2));
 
     glowController =
@@ -784,17 +803,13 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       });
     glowController.forward();
 
+    // Load saved scores
     loadScores();
+    // Start turn timer
     startTurnTimer();
 
-    // BGM Listener
-    widget.bgmNotifier.addListener(() {
-      if (!mounted) return;
-      if (widget.bgmNotifier.value)
-        widget.bgmPlayer.resume();
-      else
-        widget.bgmPlayer.pause();
-    });
+    // ===== FULL FIX: Pause BGM immediately =====
+    widget.bgmPlayer.pause();
 
     // Computer starts if first turn
     if (widget.vsComputer && currentPlayer == computerSymbol) {
@@ -814,6 +829,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     super.dispose();
   }
 
+  // ================== Score Management ==================
   Future<void> loadScores() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -830,6 +846,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     await prefs.setInt("draws", draws);
   }
 
+  // ================== Timer & Moves ==================
   void startTurnTimer() {
     turnTimer?.cancel();
     setState(() => seconds = 10);
@@ -906,6 +923,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     resetTurnTimer();
   }
 
+  // ================== Computer Logic ==================
   void computerMove() {
     if (gameOver) return;
 
@@ -992,6 +1010,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     }
   }
 
+  // ================== Winner Logic ==================
   String? evaluateBoard() {
     List<List<int>> patterns = [
       [0, 1, 2],
@@ -1085,6 +1104,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
+  // ================== UI ==================
   @override
   Widget build(BuildContext context) {
     double boardSize = MediaQuery.of(context).size.width * 0.9;
@@ -1129,7 +1149,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                         ),
                       ),
                     ),
-                    SizedBox(width:10),
+                    SizedBox(width: 10),
                     Expanded(
                       child: TextField(
                         controller: player2Controller,
