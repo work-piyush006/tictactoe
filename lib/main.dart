@@ -102,7 +102,7 @@ class _SplashScreenState extends State<SplashScreen>
 }
 
 // ================== HOME SCREEN ==================
-// ================== HOME SCREEN ==================
+
 class HomeScreen extends StatefulWidget {
   final AudioPlayer bgmPlayer;
   final ValueNotifier<bool> bgmNotifier;
@@ -115,6 +115,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int playerWins = 0, computerWins = 0, draws = 0;
+  late VoidCallback _bgmListener;
 
   @override
   void initState() {
@@ -122,13 +123,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     loadScores();
 
-    widget.bgmNotifier.addListener(() {
+    // Listener for BGM
+    _bgmListener = () {
       if (widget.bgmNotifier.value) {
         widget.bgmPlayer.resume();
       } else {
         widget.bgmPlayer.pause();
       }
-    });
+    };
+    widget.bgmNotifier.addListener(_bgmListener);
 
     // Ensure BGM plays immediately when HomeScreen opens
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -139,7 +142,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    widget.bgmNotifier.removeListener(() {});
+    widget.bgmNotifier.removeListener(_bgmListener);
     super.dispose();
   }
 
@@ -196,7 +199,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               SizedBox(height: 40),
               ElevatedButton(
                 onPressed: () => navigateTo(
-                    ModeSelectionScreen(bgmPlayer: widget.bgmPlayer, bgmNotifier: widget.bgmNotifier)),
+                  ModeSelectionScreen(
+                    bgmPlayer: widget.bgmPlayer,
+                    bgmNotifier: widget.bgmNotifier, // required
+                  ),
+                ),
                 style: ElevatedButton.styleFrom(
                     minimumSize: Size(220, 55),
                     backgroundColor: Colors.greenAccent.shade700,
@@ -208,9 +215,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ),
               SizedBox(height: 20),
               ElevatedButton(
-                onPressed: () =>
-                    navigateTo(TwoPlayerSymbolSelectionScreen(
-                        bgmPlayer: widget.bgmPlayer, bgmNotifier: widget.bgmNotifier)),
+                onPressed: () => navigateTo(
+                  TwoPlayerSymbolSelectionScreen(
+                    bgmPlayer: widget.bgmPlayer,
+                    bgmNotifier: widget.bgmNotifier, // required
+                  ),
+                ),
                 style: ElevatedButton.styleFrom(
                     minimumSize: Size(220, 55),
                     backgroundColor: Colors.blueAccent.shade700,
@@ -222,8 +232,12 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               ),
               SizedBox(height: 20),
               ElevatedButton(
-                onPressed: () =>
-                    navigateTo(SettingsScreen(bgmPlayer: widget.bgmPlayer, bgmNotifier: widget.bgmNotifier)),
+                onPressed: () => navigateTo(
+                  SettingsScreen(
+                    bgmPlayer: widget.bgmPlayer,
+                    bgmNotifier: widget.bgmNotifier, // required
+                  ),
+                ),
                 style: ElevatedButton.styleFrom(
                     minimumSize: Size(220, 55),
                     backgroundColor: Colors.orangeAccent.shade700,
@@ -367,10 +381,11 @@ class AboutScreen extends StatelessWidget {
   }
 }
 
-// ================= PART 2: MODE & SYMBOL SELECTION =================
 class ModeSelectionScreen extends StatelessWidget {
   final AudioPlayer bgmPlayer;
-  ModeSelectionScreen({required this.bgmPlayer});
+  final ValueNotifier<bool> bgmNotifier; // add this
+
+  ModeSelectionScreen({required this.bgmPlayer, required this.bgmNotifier}); // updated
 
   void startGame(BuildContext context, String difficulty) {
     bgmPlayer.pause();
@@ -381,6 +396,7 @@ class ModeSelectionScreen extends StatelessWidget {
                   vsComputer: true,
                   difficulty: difficulty,
                   bgmPlayer: bgmPlayer,
+                  bgmNotifier: bgmNotifier, // pass bgmNotifier forward
                 )));
   }
 
@@ -425,40 +441,51 @@ class SymbolSelectionScreen extends StatelessWidget {
   final bool vsComputer;
   final String? difficulty;
   final AudioPlayer bgmPlayer;
+  final ValueNotifier<bool> bgmNotifier; // added
 
-  SymbolSelectionScreen(
-      {required this.vsComputer, this.difficulty, required this.bgmPlayer});
+  SymbolSelectionScreen({
+    required this.vsComputer,
+    this.difficulty,
+    required this.bgmPlayer,
+    required this.bgmNotifier, // added
+  });
 
   void startGame(BuildContext context, String playerSymbol) async {
     // Settings check for BGM
     SharedPreferences prefs = await SharedPreferences.getInstance();
     bool bgmOn = prefs.getBool("bgmOn") ?? true;
 
-    // VS Computer mode → BGM off regardless of Settings
+    // VS Computer mode → pause BGM if necessary
     if (vsComputer || difficulty != null || !bgmOn) {
       bgmPlayer.pause();
     }
 
     Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-            builder: (_) => GameScreen(
-                  vsComputer: vsComputer,
-                  playerSymbol: playerSymbol,
-                  difficulty: difficulty,
-                  bgmPlayer: bgmPlayer,
-                )));
+      context,
+      MaterialPageRoute(
+        builder: (_) => GameScreen(
+          vsComputer: vsComputer,
+          playerSymbol: playerSymbol,
+          difficulty: difficulty,
+          bgmPlayer: bgmPlayer,
+          bgmNotifier: bgmNotifier, // pass forward
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final List<String> symbols = ["X", "O"];
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
-            gradient: LinearGradient(
-                colors: [Colors.deepPurple, Colors.purpleAccent],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight)),
+          gradient: LinearGradient(
+            colors: [Colors.deepPurple, Colors.purpleAccent],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
         child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -476,26 +503,24 @@ class SymbolSelectionScreen extends StatelessWidget {
               SizedBox(height: 30),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  ElevatedButton(
-                      onPressed: () => startGame(context, "X"),
+                children: symbols.map((symbol) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: ElevatedButton(
+                      onPressed: () => startGame(context, symbol),
                       style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.redAccent,
-                          minimumSize: Size(120, 120),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20))),
-                      child: Text("X", style: TextStyle(fontSize: 48))),
-                  SizedBox(width: 40),
-                  ElevatedButton(
-                      onPressed: () => startGame(context, "O"),
-                      style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blueAccent,
-                          minimumSize: Size(120, 120),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20))),
-                      child: Text("O", style: TextStyle(fontSize: 48))),
-                ],
-              )
+                        backgroundColor: symbol == "X"
+                            ? Colors.redAccent
+                            : Colors.blueAccent,
+                        minimumSize: Size(120, 120),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20)),
+                      ),
+                      child: Text(symbol, style: TextStyle(fontSize: 48)),
+                    ),
+                  );
+                }).toList(),
+              ),
             ],
           ),
         ),
@@ -506,70 +531,76 @@ class SymbolSelectionScreen extends StatelessWidget {
 
 class TwoPlayerSymbolSelectionScreen extends StatelessWidget {
   final AudioPlayer bgmPlayer;
-  TwoPlayerSymbolSelectionScreen({required this.bgmPlayer});
+  final ValueNotifier<bool> bgmNotifier; // added
+
+  TwoPlayerSymbolSelectionScreen({
+    required this.bgmPlayer,
+    required this.bgmNotifier, // added
+  });
 
   void startTwoPlayerGame(BuildContext context, String player1Symbol) async {
-    // Settings check for BGM
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    bool bgmOn = prefs.getBool("bgmOn") ?? true;
-
-    // 2 Player mode → always pause BGM
-    if (!bgmOn) bgmPlayer.pause();
-    else bgmPlayer.pause(); // Ensure BGM off
+    // Always pause BGM in 2-player mode
+    bgmPlayer.pause();
 
     Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-            builder: (_) => GameScreen(
-                  vsComputer: false,
-                  playerSymbol: player1Symbol,
-                  difficulty: null,
-                  bgmPlayer: bgmPlayer,
-                )));
+      context,
+      MaterialPageRoute(
+        builder: (_) => GameScreen(
+          vsComputer: false,
+          playerSymbol: player1Symbol,
+          difficulty: null,
+          bgmPlayer: bgmPlayer,
+          bgmNotifier: bgmNotifier, // pass forward
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
+    final List<String> symbols = ["X", "O"];
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
-            gradient: LinearGradient(
-                colors: [Colors.deepPurple, Colors.purpleAccent],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight)),
+          gradient: LinearGradient(
+            colors: [Colors.deepPurple, Colors.purpleAccent],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
         child: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text("Player 1: Choose Your Symbol",
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold),
-                  textAlign: TextAlign.center),
+              Text(
+                "Player 1: Choose Your Symbol",
+                style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
               SizedBox(height: 30),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  ElevatedButton(
-                      onPressed: () => startTwoPlayerGame(context, "X"),
+                children: symbols.map((symbol) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: ElevatedButton(
+                      onPressed: () => startTwoPlayerGame(context, symbol),
                       style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.redAccent,
-                          minimumSize: Size(120, 120),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20))),
-                      child: Text("X", style: TextStyle(fontSize: 48))),
-                  SizedBox(width: 40),
-                  ElevatedButton(
-                      onPressed: () => startTwoPlayerGame(context, "O"),
-                      style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blueAccent,
-                          minimumSize: Size(120, 120),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(20))),
-                      child: Text("O", style: TextStyle(fontSize: 48))),
-                ],
-              )
+                        backgroundColor: symbol == "X"
+                            ? Colors.redAccent
+                            : Colors.blueAccent,
+                        minimumSize: Size(120, 120),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20)),
+                      ),
+                      child: Text(symbol, style: TextStyle(fontSize: 48)),
+                    ),
+                  );
+                }).toList(),
+              ),
             ],
           ),
         ),
@@ -578,20 +609,20 @@ class TwoPlayerSymbolSelectionScreen extends StatelessWidget {
   }
 }
 
-// ================= Fully Updated GameScreen =================
+// ================= Fully Fixed GameScreen =================
 class GameScreen extends StatefulWidget {
   final bool vsComputer;
   final String playerSymbol;
   final String? difficulty;
   final AudioPlayer bgmPlayer;
-  final ValueNotifier<bool> bgmEnabled;
+  final ValueNotifier<bool> bgmNotifier;
 
   GameScreen({
     required this.vsComputer,
     required this.playerSymbol,
     this.difficulty,
     required this.bgmPlayer,
-    required this.bgmEnabled,
+    required this.bgmNotifier,
   });
 
   @override
@@ -655,11 +686,11 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     startTurnTimer();
 
     // stop BGM on game screen
-    if (widget.bgmEnabled.value) widget.bgmPlayer.pause();
+    if (widget.bgmNotifier.value) widget.bgmPlayer.pause();
 
-    widget.bgmEnabled.addListener(() {
+    widget.bgmNotifier.addListener(() {
       if (!mounted) return;
-      if (widget.bgmEnabled.value) widget.bgmPlayer.resume();
+      if (widget.bgmNotifier.value) widget.bgmPlayer.resume();
       else widget.bgmPlayer.pause();
     });
 
@@ -678,7 +709,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     player1Controller.dispose();
     player2Controller.dispose();
 
-    if (widget.bgmEnabled.value) widget.bgmPlayer.resume();
+    if (widget.bgmNotifier.value) widget.bgmPlayer.resume();
 
     super.dispose();
   }
@@ -707,7 +738,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     turnTimer = Timer.periodic(Duration(seconds: 1), (timer) async {
       if (!mounted) return;
 
-      if (seconds <= 3 && seconds > 0 && widget.bgmEnabled.value) {
+      if (seconds <= 3 && seconds > 0 && widget.bgmNotifier.value) {
         await sfxPlayer.play(AssetSource('Tap.mp3'), mode: PlayerMode.lowLatency);
       }
 
@@ -725,7 +756,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   }
 
   void playSfx(String file) async {
-    if (widget.bgmEnabled.value) {
+    if (widget.bgmNotifier.value) {
       await sfxPlayer.play(AssetSource(file), mode: PlayerMode.lowLatency);
     }
   }
@@ -899,7 +930,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         else
           playSfx('draw.mp3');
 
-        List<List<int>> patterns = [
+       List<List<int>> patterns = [
           [0, 1, 2],
           [3, 4, 5],
           [6, 7, 8],
@@ -1156,9 +1187,13 @@ class _SmoothHourglassState extends State<SmoothHourglass> with SingleTickerProv
   @override
   void initState() {
     super.initState();
+    _initController();
+  }
+
+  void _initController() {
     _controller = AnimationController(
       vsync: this,
-      duration: Duration(seconds: 10),
+      duration: Duration(seconds: widget.secondsLeft > 0 ? widget.secondsLeft : 1),
     )..addStatusListener((status) {
         if (status == AnimationStatus.completed) {
           flipped = !flipped;
@@ -1173,7 +1208,9 @@ class _SmoothHourglassState extends State<SmoothHourglass> with SingleTickerProv
   void didUpdateWidget(covariant SmoothHourglass oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.secondsLeft != widget.secondsLeft) {
-      // Optional: could sync animation if needed
+      // Reset duration and restart animation when secondsLeft changes
+      _controller.dispose();
+      _initController();
     }
   }
 
@@ -1192,7 +1229,7 @@ class _SmoothHourglassState extends State<SmoothHourglass> with SingleTickerProv
         if (flipped) progress = 1 - progress;
         return CustomPaint(
           painter: SmoothHourglassPainter(progress: progress),
-          child: SizedBox(width: 60, height: 100),
+          child: const SizedBox(width: 60, height: 100),
         );
       },
     );
@@ -1215,16 +1252,14 @@ class SmoothHourglassPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2;
 
-    // Draw hourglass frame
+    // Draw hourglass frame (simple diamond shape)
     Path frame = Path();
-    frame.moveTo(0, 0);
-    frame.lineTo(w, 0);
-    frame.lineTo(0, h);
-    frame.lineTo(w, h);
+    frame.moveTo(w / 2, 0);
+    frame.lineTo(w, h / 2);
+    frame.lineTo(w / 2, h);
+    frame.lineTo(0, h / 2);
     frame.close();
     canvas.drawPath(frame, outline);
-    canvas.drawLine(Offset(0, 0), Offset(w, h), outline);
-    canvas.drawLine(Offset(w, 0), Offset(0, h), outline);
 
     // Draw falling sand with gradient
     Paint sandPaint = Paint()
@@ -1234,19 +1269,19 @@ class SmoothHourglassPainter extends CustomPainter {
         end: Alignment.bottomCenter,
       ).createShader(Rect.fromLTWH(0, 0, w, h));
 
-    // Top sand
+    // Top sand triangle
     Path topSand = Path();
-    topSand.moveTo(0, 0);
-    topSand.lineTo(w, 0);
-    topSand.lineTo(w/2, h/2 * (1 - progress));
+    topSand.moveTo(w / 2 * (1 - progress), 0);
+    topSand.lineTo(w / 2 * (1 + progress), 0);
+    topSand.lineTo(w / 2, h / 2 * (1 - progress));
     topSand.close();
     canvas.drawPath(topSand, sandPaint);
 
-    // Bottom sand
+    // Bottom sand triangle
     Path bottomSand = Path();
-    bottomSand.moveTo(0, h);
-    bottomSand.lineTo(w, h);
-    bottomSand.lineTo(w/2, h/2 + h/2 * progress);
+    bottomSand.moveTo(w / 2 * (1 - progress), h);
+    bottomSand.lineTo(w / 2 * (1 + progress), h);
+    bottomSand.lineTo(w / 2, h / 2 + h / 2 * progress);
     bottomSand.close();
     canvas.drawPath(bottomSand, sandPaint);
 
@@ -1254,7 +1289,7 @@ class SmoothHourglassPainter extends CustomPainter {
     Paint streamPaint = Paint()..color = Colors.orangeAccent;
     canvas.drawRect(
       Rect.fromCenter(
-        center: Offset(w/2, h/2),
+        center: Offset(w / 2, h / 2),
         width: 4,
         height: 20 * progress,
       ),
