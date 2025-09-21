@@ -562,7 +562,7 @@ class TwoPlayerSymbolSelectionScreen extends StatelessWidget {
   }
 }
 
-// ================= Updated GameScreen with new Hourglass =================
+// ================= Updated GameScreen =================
 class GameScreen extends StatefulWidget {
   final bool vsComputer;
   final String playerSymbol;
@@ -593,7 +593,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
   // Timer
   int seconds = 10;
-  bool hourglassFlipped = false;
   Timer? turnTimer;
 
   TextEditingController playerNameController = TextEditingController();
@@ -677,13 +676,13 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     turnTimer = Timer.periodic(Duration(seconds: 1), (timer) async {
       if (!mounted) return;
 
-      // Play tap.mp3 last 3 seconds
-      if (seconds <= 3 && seconds > 0) await sfxPlayer.play(AssetSource('Tap.mp3'));
+      if (seconds <= 3 && seconds > 0) {
+        await sfxPlayer.play(AssetSource('Tap.mp3'));
+      }
 
       setState(() => seconds--);
 
       if (seconds <= 0) {
-        hourglassFlipped = !hourglassFlipped;
         nextTurn();
       }
     });
@@ -691,7 +690,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
   void resetTurnTimer() {
     turnTimer?.cancel();
-    hourglassFlipped = !hourglassFlipped;
     startTurnTimer();
   }
 
@@ -701,19 +699,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
   // ------------------- Game Logic -------------------
   void makeMove(int index) {
-    if (gameOver) return;
-
-    if (board[index] != "") {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("Invalid Move!")));
-      return;
-    }
-
-    if (widget.vsComputer && isAITurn) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("Wait for AI turn")));
-      return;
-    }
+    if (gameOver || board[index] != "") return;
+    if (widget.vsComputer && isAITurn) return;
 
     setState(() {
       board[index] = currentPlayer;
@@ -781,6 +768,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       if (!gameOver) currentPlayer = playerSymbol;
       isAITurn = false;
     });
+
     resetTurnTimer();
   }
 
@@ -873,7 +861,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           draws++;
 
         saveScores();
-
         if (winner != "Draw") playSfx('Celebration.mp3');
         else playSfx('draw.mp3');
 
@@ -907,7 +894,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       winner = "";
       winningPattern = [];
       isAITurn = false;
-      hourglassFlipped = false;
+      seconds = 10;
     });
     resetTurnTimer();
 
@@ -944,162 +931,154 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                 colors: [Colors.deepPurple, Colors.purpleAccent],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight)),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // Player rename
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: playerNameController,
-                      style: TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
-                        labelText: 'Player Name',
-                        labelStyle: TextStyle(color: Colors.white70),
-                        enabledBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: Colors.white),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderSide: BorderSide(color: Colors.white),
-                        ),
-                      ),
-                    ),
-                  ),
-                  SizedBox(width: 10),
-                  Text(
-                    computerName,
-                    style: TextStyle(color: Colors.white, fontSize: 18),
-                  )
-                ],
-              ),
-            ),
-            SizedBox(height: 10),
-
-            // Scores
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  scoreCard(playerNameController.text, playerWins),
-                  scoreCard('Draw', draws),
-                  scoreCard(computerName, computerWins),
-                ],
-              ),
-            ),
-            SizedBox(height: 20),
-
-            // Hourglass + Timer
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Column(
+        child: SingleChildScrollView(
+          padding: EdgeInsets.all(10),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              // Player rename + opponent
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                child: Row(
                   children: [
-                    Text(
-                      'Turn: ${currentPlayer == playerSymbol ? playerNameController.text : computerName}',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold),
-                    ),
-                    SizedBox(height: 10),
-                    AnimatedContainer(
-                      duration: Duration(milliseconds: 300),
-                      width: 60,
-                      height: 60,
-                      child: CustomPaint(
-                        painter: ColorfulHourglassPainter(
-                          flipped: hourglassFlipped,
-                          progress: (10 - seconds) / 10,
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: 5),
-                    Text(
-                      '$seconds s',
-                      style: TextStyle(
-                        color: seconds <= 3 ? Colors.red : Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-
-            SizedBox(height: 20),
-
-            // Game Board
-            Container(
-              width: boardSize,
-              height: boardSize,
-              child: GridView.builder(
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 3,
-                    crossAxisSpacing: 8,
-                    mainAxisSpacing: 8),
-                itemCount: 9,
-                itemBuilder: (context, index) {
-                  bool isWinningCell = winningPattern.contains(index);
-                  return GestureDetector(
-                    onTap: () => makeMove(index),
-                    child: AnimatedContainer(
-                      duration: Duration(milliseconds: 300),
-                      decoration: BoxDecoration(
-                        color: isWinningCell
-                            ? Colors.yellowAccent
-                            : Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                        boxShadow: [
-                          BoxShadow(
-                              color: Colors.black26,
-                              blurRadius: 4,
-                              offset: Offset(2, 2))
-                        ],
-                      ),
-                      child: Center(
-                        child: ScaleTransition(
-                          scale: glowAnimation,
-                          child: Text(
-                            board[index],
-                            style: TextStyle(
-                                fontSize: 48,
-                                fontWeight: FontWeight.bold,
-                                color: board[index] == "X"
-                                    ? Colors.deepPurple
-                                    : Colors.pinkAccent),
+                    Expanded(
+                      child: TextField(
+                        controller: playerNameController,
+                        style: TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          labelText: 'Player Name',
+                          labelStyle: TextStyle(color: Colors.white70),
+                          enabledBorder: OutlineInputBorder(
+                            borderSide: BorderSide(color: Colors.white),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderSide: BorderSide(color: Colors.white),
                           ),
                         ),
                       ),
                     ),
-                  );
-                },
+                    SizedBox(width: 10),
+                    Text(
+                      computerName,
+                      style: TextStyle(color: Colors.white, fontSize: 18),
+                    )
+                  ],
+                ),
               ),
-            ),
 
-            SizedBox(height: 20),
+              // Scores
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    scoreCard(playerNameController.text, playerWins),
+                    scoreCard('Draw', draws),
+                    scoreCard(computerName, computerWins),
+                  ],
+                ),
+              ),
 
-            // Reset Button
-            ElevatedButton.icon(
-              onPressed: resetGame,
-              icon: Icon(Icons.refresh),
-              label: Text("Restart Game"),
-              style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.deepPurple),
-            ),
+              // Hourglass + Timer
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Column(
+                    children: [
+                      Text(
+                        'Turn: ${currentPlayer == playerSymbol ? playerNameController.text : computerName}',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold),
+                      ),
+                      SizedBox(height: 10),
+                      SmoothHourglass(secondsLeft: seconds),
+                      SizedBox(height: 5),
+                      Text(
+                        '$seconds s',
+                        style: TextStyle(
+                          color: seconds <= 3 ? Colors.red : Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
 
-            // Confetti
-            ConfettiWidget(
-              confettiController: confettiController,
-              blastDirectionality: BlastDirectionality.explosive,
-              shouldLoop: false,
-              colors: [Colors.yellow, Colors.red, Colors.green, Colors.blue],
-            ),
-          ],
+              SizedBox(height: 20),
+
+              // Game Board
+              Container(
+                width: boardSize,
+                height: boardSize,
+                child: GridView.builder(
+                  physics: NeverScrollableScrollPhysics(),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 3,
+                      crossAxisSpacing: 8,
+                      mainAxisSpacing: 8),
+                  itemCount: 9,
+                  itemBuilder: (context, index) {
+                    bool isWinningCell = winningPattern.contains(index);
+                    return GestureDetector(
+                      onTap: () => makeMove(index),
+                      child: AnimatedContainer(
+                        duration: Duration(milliseconds: 300),
+                        decoration: BoxDecoration(
+                          color: isWinningCell
+                              ? Colors.yellowAccent
+                              : Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          boxShadow: [
+                            BoxShadow(
+                                color: Colors.black26,
+                                blurRadius: 4,
+                                offset: Offset(2, 2))
+                          ],
+                        ),
+                        child: Center(
+                          child: ScaleTransition(
+                            scale: glowAnimation,
+                            child: Text(
+                              board[index],
+                              style: TextStyle(
+                                  fontSize: 48,
+                                  fontWeight: FontWeight.bold,
+                                  color: board[index] == "X"
+                                      ? Colors.deepPurple
+                                      : Colors.pinkAccent),
+                            ),
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+
+              SizedBox(height: 20),
+
+              // Reset Button
+              ElevatedButton.icon(
+                onPressed: resetGame,
+                icon: Icon(Icons.refresh),
+                label: Text("Restart Game"),
+                style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: Colors.deepPurple),
+              ),
+
+              // Confetti
+              ConfettiWidget(
+                confettiController: confettiController,
+                blastDirectionality: BlastDirectionality.explosive,
+                shouldLoop: false,
+                colors: [Colors.yellow, Colors.red, Colors.green, Colors.blue],
+              ),
+            ],
+          ),
         ),
       ),
     );
