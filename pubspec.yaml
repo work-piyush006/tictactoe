@@ -1,33 +1,38 @@
 name: tic_tac_toe
-description: A Tic Tac Toe game with modern UI
-publish_to: "none" # remove this if publishing
+description: A clean and modern Tic Tac Toe game with AI and 2-player modes.
+publish_to: 'none' # Remove if publishing to pub.dev
+
 version: 1.0.0+1
 
 environment:
-  sdk: ">=2.18.0 <3.0.0"
+  sdk: ">=2.19.0 <3.1.0"
 
 dependencies:
   flutter:
     sdk: flutter
-  audioplayers: ^3.0.1
+  audioplayers: ^3.1.1
   shared_preferences: ^2.1.1
   confetti: ^0.6.0
+  connectivity_plus: ^4.1.0
+  google_mobile_ads: ^3.2.0
+  flutter_localizations:
+    sdk: flutter
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^2.0.0
+  flutter_lints: ^2.0.1
 
 flutter:
 
   uses-material-design: true
 
   assets:
-    - assets/logo.png
-    - assets/bgm.mp3
     - assets/Tap.mp3
     - assets/Celebration.mp3
+    - assets/bgm.mp3
     - assets/draw.mp3
+    - assets/logo.png
 
   fonts:
     - family: Poppins
