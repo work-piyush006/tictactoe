@@ -102,6 +102,14 @@ class _SplashScreenState extends State<SplashScreen>
 }
 
 // ================== HOME SCREEN ==================
+class HomeScreen extends StatefulWidget {
+  final AudioPlayer bgmPlayer;
+  HomeScreen({required this.bgmPlayer});
+
+  @override
+  _HomeScreenState createState() => _HomeScreenState();
+}
+
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int playerWins = 0, computerWins = 0, draws = 0;
 
@@ -144,7 +152,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void navigateTo(Widget screen) {
     Navigator.push(context, MaterialPageRoute(builder: (_) => screen))
         .then((_) {
-      // Resume BGM when returning from another screen
       widget.bgmPlayer.resume();
       loadScores();
     });
@@ -233,6 +240,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 }
+
 // ================= PART 1: SETTINGS + ABOUT =================
 class SettingsScreen extends StatefulWidget {
   final AudioPlayer bgmPlayer;
