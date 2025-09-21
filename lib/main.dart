@@ -562,7 +562,7 @@ class TwoPlayerSymbolSelectionScreen extends StatelessWidget {
   }
 }
 
-// =================== GAME SCREEN WITH AI MINIMAX + TIMER SOUNDS ===================
+// ================= Updated GameScreen with new Hourglass =================
 class GameScreen extends StatefulWidget {
   final bool vsComputer;
   final String playerSymbol;
@@ -587,22 +587,27 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   bool gameOver = false;
   String winner = "";
   bool isAITurn = false;
+  List<int> winningPattern = [];
 
+  int playerWins = 0, computerWins = 0, draws = 0;
+
+  // Timer
+  int seconds = 10;
+  bool hourglassFlipped = false;
   Timer? turnTimer;
-  final int turnDuration = 10; // seconds per turn
-  late AnimationController hourglassController;
 
-  late AudioPlayer sfxPlayer;
+  TextEditingController playerNameController = TextEditingController();
+  late String computerName;
+
+  // Confetti
   late ConfettiController confettiController;
 
+  // Audio
+  late AudioPlayer sfxPlayer;
+
+  // Glow animation
   late AnimationController glowController;
   late Animation<double> glowAnimation;
-
-  int playerWins = 0;
-  int computerWins = 0;
-  int draws = 0;
-
-  List<int> winningPattern = [];
 
   @override
   void initState() {
@@ -611,14 +616,14 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     computerSymbol = playerSymbol == "X" ? "O" : "X";
     currentPlayer = "X";
 
+    computerName = widget.vsComputer ? "${widget.difficulty} AI" : "Player 2";
+    playerNameController.text = "Player";
+
     sfxPlayer = AudioPlayer();
     confettiController = ConfettiController(duration: Duration(seconds: 2));
 
-    // Glow animation
     glowController = AnimationController(
-      vsync: this,
-      duration: Duration(milliseconds: 800),
-    );
+        vsync: this, duration: Duration(milliseconds: 800));
     glowAnimation = Tween<double>(begin: 1.0, end: 1.1)
         .animate(CurvedAnimation(parent: glowController, curve: Curves.easeInOut))
       ..addStatusListener((status) {
@@ -628,19 +633,11 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       });
     glowController.forward();
 
-    // Hourglass animation
-    hourglassController = AnimationController(
-      vsync: this,
-      duration: Duration(seconds: turnDuration),
-    );
-
     loadScores();
     startTurnTimer();
 
-    // VS Computer → pause BGM
     widget.bgmPlayer.pause();
 
-    // If AI starts first
     if (widget.vsComputer && currentPlayer == computerSymbol) {
       Future.delayed(Duration(milliseconds: 500), computerMove);
     }
@@ -650,13 +647,12 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   void dispose() {
     turnTimer?.cancel();
     glowController.dispose();
-    hourglassController.dispose();
     confettiController.dispose();
     sfxPlayer.dispose();
+    playerNameController.dispose();
     super.dispose();
   }
 
-  // ------------------- Score Management -------------------
   Future<void> loadScores() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
@@ -673,17 +669,21 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     prefs.setInt("draws", draws);
   }
 
-  // ------------------- Turn Timer -------------------
+  // ------------------- Timer -------------------
   void startTurnTimer() {
     turnTimer?.cancel();
-    hourglassController.forward(from: 0);
+    setState(() => seconds = 10);
 
-    turnTimer = Timer.periodic(Duration(milliseconds: 100), (_) {
-      if (hourglassController.value >= 0.7 && hourglassController.value < 1.0) {
-        // last 3 seconds warning (0.7 ~ 1.0)
-        playSfx('Tap.mp3');
-      }
-      if (hourglassController.value >= 1.0) {
+    turnTimer = Timer.periodic(Duration(seconds: 1), (timer) async {
+      if (!mounted) return;
+
+      // Play tap.mp3 last 3 seconds
+      if (seconds <= 3 && seconds > 0) await sfxPlayer.play(AssetSource('Tap.mp3'));
+
+      setState(() => seconds--);
+
+      if (seconds <= 0) {
+        hourglassFlipped = !hourglassFlipped;
         nextTurn();
       }
     });
@@ -691,24 +691,35 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
   void resetTurnTimer() {
     turnTimer?.cancel();
-    hourglassController.reset();
-    if (!gameOver) startTurnTimer();
+    hourglassFlipped = !hourglassFlipped;
+    startTurnTimer();
   }
 
-  // ------------------- Sound Effects -------------------
   void playSfx(String file) async {
-    if (!mounted) return;
     await sfxPlayer.play(AssetSource(file));
   }
 
   // ------------------- Game Logic -------------------
   void makeMove(int index) {
-    if (gameOver || board[index] != "" || (widget.vsComputer && isAITurn)) return;
+    if (gameOver) return;
+
+    if (board[index] != "") {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text("Invalid Move!")));
+      return;
+    }
+
+    if (widget.vsComputer && isAITurn) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text("Wait for AI turn")));
+      return;
+    }
 
     setState(() {
       board[index] = currentPlayer;
       playSfx('Tap.mp3');
       checkWinner();
+
       if (!gameOver) {
         currentPlayer = currentPlayer == "X" ? "O" : "X";
         glowController.forward(from: 0);
@@ -726,6 +737,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
   void nextTurn() {
     if (gameOver) return;
+
     setState(() {
       currentPlayer = currentPlayer == "X" ? "O" : "X";
       glowController.forward(from: 0);
@@ -736,18 +748,18 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         isAITurn = false;
       }
     });
+
     resetTurnTimer();
   }
 
-  // ------------------- AI Move -------------------
   void computerMove() {
     if (gameOver) return;
 
     int index;
     switch (widget.difficulty) {
       case "Easy":
-        List<int> emptyCells = [for (int i = 0; i < 9; i++) if (board[i] == "") i];
-        index = emptyCells[Random().nextInt(emptyCells.length)];
+        List<int> empty = [for (int i = 0; i < 9; i++) if (board[i] == "") i];
+        index = empty[Random().nextInt(empty.length)];
         break;
       case "Medium":
         index = minimaxMove(depth: 1);
@@ -756,7 +768,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         index = minimaxMove(depth: 3);
         break;
       case "Expert":
-        index = minimaxMove(depth: 9); // unbeatable
+        index = minimaxMove(depth: 9);
         break;
       default:
         index = Random().nextInt(9);
@@ -772,7 +784,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     resetTurnTimer();
   }
 
-  // ------------------- Minimax AI -------------------
   int minimaxMove({int depth = 9}) {
     int bestScore = -1000;
     int move = -1;
@@ -792,7 +803,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     return move;
   }
 
-  int minimax(int currentDepth, bool isMaximizing, int maxDepth) {
+  int minimax(int currentDepth, bool isMax, int maxDepth) {
     String? result = evaluateBoard();
     if (result != null) {
       if (result == computerSymbol) return 10 - currentDepth;
@@ -801,7 +812,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     }
     if (currentDepth >= maxDepth) return 0;
 
-    if (isMaximizing) {
+    if (isMax) {
       int bestScore = -1000;
       for (int i = 0; i < 9; i++) {
         if (board[i] == "") {
@@ -827,18 +838,21 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   }
 
   String? evaluateBoard() {
-    List<List<int>> winPatterns = [
-      [0, 1, 2], [3, 4, 5], [6, 7, 8],
-      [0, 3, 6], [1, 4, 7], [2, 5, 8],
-      [0, 4, 8], [2, 4, 6],
+    List<List<int>> patterns = [
+      [0, 1, 2],
+      [3, 4, 5],
+      [6, 7, 8],
+      [0, 3, 6],
+      [1, 4, 7],
+      [2, 5, 8],
+      [0, 4, 8],
+      [2, 4, 6]
     ];
 
-    for (var pattern in winPatterns) {
-      if (board[pattern[0]] != "" &&
-          board[pattern[0]] == board[pattern[1]] &&
-          board[pattern[1]] == board[pattern[2]]) {
-        return board[pattern[0]];
-      }
+    for (var p in patterns) {
+      if (board[p[0]] != "" &&
+          board[p[0]] == board[p[1]] &&
+          board[p[1]] == board[p[2])) return board[p[0]];
     }
 
     if (!board.contains("")) return "Draw";
@@ -855,27 +869,33 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           playerWins++;
         else if (winner == computerSymbol)
           computerWins++;
-        else {
+        else
           draws++;
-          playSfx('draw.mp3'); // Draw sound
-        }
-        saveScores();
-        if (winner != "Draw") playSfx('Celebration.mp3');
-        confettiController.play();
 
-        // Highlight winning pattern
-        if (winner != "Draw") {
-          List<List<int>> winPatterns = [
-            [0, 1, 2], [3, 4, 5], [6, 7, 8],
-            [0, 3, 6], [1, 4, 7], [2, 5, 8],
-            [0, 4, 8], [2, 4, 6],
-          ];
-          winningPattern = winPatterns.firstWhere(
-              (p) => board[p[0]] == winner && board[p[1]] == winner && board[p[2]] == winner,
-              orElse: () => []);
-        }
+        saveScores();
+
+        if (winner != "Draw") playSfx('Celebration.mp3');
+        else playSfx('draw.mp3');
+
+        List<List<int>> patterns = [
+          [0, 1, 2],
+          [3, 4, 5],
+          [6, 7, 8],
+          [0, 3, 6],
+          [1, 4, 7],
+          [2, 5, 8],
+          [0, 4, 8],
+          [2, 4, 6]
+        ];
+        winningPattern = patterns.firstWhere(
+            (p) =>
+                board[p[0]] == winner &&
+                board[p[1]] == winner &&
+                board[p[2]] == winner,
+            orElse: () => []);
       });
       turnTimer?.cancel();
+      confettiController.play();
     }
   }
 
@@ -887,6 +907,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       winner = "";
       winningPattern = [];
       isAITurn = false;
+      hourglassFlipped = false;
     });
     resetTurnTimer();
 
@@ -895,10 +916,21 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     }
   }
 
-  // ------------------- UI -------------------
+  Widget scoreCard(String name, int score) {
+    return Column(
+      children: [
+        Text(name, style: TextStyle(color: Colors.white, fontSize: 16)),
+        Text("$score",
+            style: TextStyle(
+                color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold))
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     double boardSize = MediaQuery.of(context).size.width * 0.9;
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -906,231 +938,296 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         backgroundColor: Colors.deepPurple,
         centerTitle: true,
       ),
-      body: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          // Scores
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                scoreCard('You', playerWins),
-                scoreCard('Draw', draws),
-                scoreCard('AI', computerWins),
-              ],
-            ),
-          ),
-          SizedBox(height: 20),
-
-          // Board
-          Container(
-            width: boardSize,
-            height: boardSize,
-            child: GridView.builder(
-              itemCount: 9,
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: 3,
-                  childAspectRatio: 1.0,
-                  crossAxisSpacing: 5,
-                  mainAxisSpacing: 5),
-              itemBuilder: (context, index) {
-                bool highlight = winningPattern.contains(index);
-                return GestureDetector(
-                  onTap: () => makeMove(index),
-                  child: AnimatedContainer(
-                    duration: Duration(milliseconds: 300),
-                    decoration: BoxDecoration(
-                      color: highlight ? Colors.yellow.shade300 : Colors.white,
-                      border: Border.all(color: Colors.deepPurple, width: 2),
-                      borderRadius: BorderRadius.circular(8),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.deepPurple.withOpacity(0.2),
-                          blurRadius: 4,
-                          offset: Offset(2, 2),
+      body: Container(
+        decoration: BoxDecoration(
+            gradient: LinearGradient(
+                colors: [Colors.deepPurple, Colors.purpleAccent],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight)),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Player rename
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: playerNameController,
+                      style: TextStyle(color: Colors.white),
+                      decoration: InputDecoration(
+                        labelText: 'Player Name',
+                        labelStyle: TextStyle(color: Colors.white70),
+                        enabledBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: Colors.white),
                         ),
-                      ],
-                    ),
-                    child: Center(
-                      child: ScaleTransition(
-                        scale: glowAnimation,
-                        child: Text(
-                          board[index],
-                          style: TextStyle(
-                              fontSize: boardSize / 5,
-                              fontWeight: FontWeight.bold,
-                              color: board[index] == playerSymbol
-                                  ? Colors.deepPurple
-                                  : Colors.redAccent),
+                        focusedBorder: OutlineInputBorder(
+                          borderSide: BorderSide(color: Colors.white),
                         ),
                       ),
                     ),
                   ),
-                );
-              },
-            ),
-          ),
-          SizedBox(height: 20),
-
-          // Turn & Hourglass
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                gameOver
-                    ? winner == "Draw"
-                        ? "It's a Draw!"
-                        : "$winner Wins!"
-                    : "$currentPlayer's Turn",
-                style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.deepPurple),
+                  SizedBox(width: 10),
+                  Text(
+                    computerName,
+                    style: TextStyle(color: Colors.white, fontSize: 18),
+                  )
+                ],
               ),
-              SizedBox(width: 20),
-              SizedBox(
-                width: 40,
-                height: 80,
-                child: AnimatedBuilder(
-                  animation: hourglassController,
-                  builder: (context, child) {
-                    return CustomPaint(
-                      painter: HourglassPainter(
-                          progress: hourglassController.value, flipped: false),
-                    );
-                  },
+            ),
+            SizedBox(height: 10),
+
+            // Scores
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  scoreCard(playerNameController.text, playerWins),
+                  scoreCard('Draw', draws),
+                  scoreCard(computerName, computerWins),
+                ],
+              ),
+            ),
+            SizedBox(height: 20),
+
+            // Hourglass + Timer
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Column(
+                  children: [
+                    Text(
+                      'Turn: ${currentPlayer == playerSymbol ? playerNameController.text : computerName}',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold),
+                    ),
+                    SizedBox(height: 10),
+                    AnimatedContainer(
+                      duration: Duration(milliseconds: 300),
+                      width: 60,
+                      height: 60,
+                      child: CustomPaint(
+                        painter: ColorfulHourglassPainter(
+                          flipped: hourglassFlipped,
+                          progress: (10 - seconds) / 10,
+                        ),
+                      ),
+                    ),
+                    SizedBox(height: 5),
+                    Text(
+                      '$seconds s',
+                      style: TextStyle(
+                        color: seconds <= 3 ? Colors.red : Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
-          ),
-          SizedBox(height: 30),
-
-          // Reset Button
-          ElevatedButton.icon(
-            onPressed: resetGame,
-            icon: Icon(Icons.refresh),
-            label: Text('Restart'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.deepPurple,
-              padding: EdgeInsets.symmetric(horizontal: 30, vertical: 15),
-              textStyle: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ],
             ),
-          ),
-        ],
-      ),
-      // Confetti
-      floatingActionButton: ConfettiWidget(
-        confettiController: confettiController,
-        blastDirectionality: BlastDirectionality.explosive,
-        shouldLoop: false,
-        colors: [Colors.purple, Colors.red, Colors.yellow, Colors.blue],
-        numberOfParticles: 20,
-        maxBlastForce: 10,
-        minBlastForce: 5,
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
-    );
-  }
 
-  Widget scoreCard(String title, int value) {
-    return Column(
-      children: [
-        Text(
-          title,
-          style: TextStyle(
-              fontSize: 18, fontWeight: FontWeight.bold, color: Colors.deepPurple),
+            SizedBox(height: 20),
+
+            // Game Board
+            Container(
+              width: boardSize,
+              height: boardSize,
+              child: GridView.builder(
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    crossAxisSpacing: 8,
+                    mainAxisSpacing: 8),
+                itemCount: 9,
+                itemBuilder: (context, index) {
+                  bool isWinningCell = winningPattern.contains(index);
+                  return GestureDetector(
+                    onTap: () => makeMove(index),
+                    child: AnimatedContainer(
+                      duration: Duration(milliseconds: 300),
+                      decoration: BoxDecoration(
+                        color: isWinningCell
+                            ? Colors.yellowAccent
+                            : Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                              color: Colors.black26,
+                              blurRadius: 4,
+                              offset: Offset(2, 2))
+                        ],
+                      ),
+                      child: Center(
+                        child: ScaleTransition(
+                          scale: glowAnimation,
+                          child: Text(
+                            board[index],
+                            style: TextStyle(
+                                fontSize: 48,
+                                fontWeight: FontWeight.bold,
+                                color: board[index] == "X"
+                                    ? Colors.deepPurple
+                                    : Colors.pinkAccent),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+
+            SizedBox(height: 20),
+
+            // Reset Button
+            ElevatedButton.icon(
+              onPressed: resetGame,
+              icon: Icon(Icons.refresh),
+              label: Text("Restart Game"),
+              style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  foregroundColor: Colors.deepPurple),
+            ),
+
+            // Confetti
+            ConfettiWidget(
+              confettiController: confettiController,
+              blastDirectionality: BlastDirectionality.explosive,
+              shouldLoop: false,
+              colors: [Colors.yellow, Colors.red, Colors.green, Colors.blue],
+            ),
+          ],
         ),
-        SizedBox(height: 5),
-        Text(
-          value.toString(),
-          style: TextStyle(
-              fontSize: 20, fontWeight: FontWeight.bold, color: Colors.redAccent),
-        ),
-      ],
+      ),
     );
   }
 }
 
-// =================== HOURGLASS PAINTER ===================
-class HourglassPainter extends CustomPainter {
-  final double progress; // 0 → 1
-  final bool flipped;
-
-  HourglassPainter({required this.progress, required this.flipped});
+// ================= Smooth Animated Hourglass Painter =================
+class SmoothHourglass extends StatefulWidget {
+  final int secondsLeft; // 0-10
+  const SmoothHourglass({Key? key, required this.secondsLeft}) : super(key: key);
 
   @override
-  void paint(Canvas canvas, Size size) {
-    final outlinePaint = Paint()
-      ..color = Colors.white
-      ..strokeWidth = 2
-      ..style = PaintingStyle.stroke;
+  _SmoothHourglassState createState() => _SmoothHourglassState();
+}
 
-    final sandPaint = Paint()
-      ..color = Colors.orangeAccent
-      ..style = PaintingStyle.fill;
+class _SmoothHourglassState extends State<SmoothHourglass> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  bool flipped = false;
 
-    double midY = size.height / 2;
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: Duration(seconds: 10),
+    )..addStatusListener((status) {
+        if (status == AnimationStatus.completed) {
+          flipped = !flipped;
+          _controller.forward(from: 0);
+        }
+      });
 
-    // Top triangle
-    Path top = Path()
-      ..moveTo(0, 0)
-      ..lineTo(size.width, 0)
-      ..lineTo(size.width / 2, midY)
-      ..close();
+    _controller.forward();
+  }
 
-    // Bottom triangle
-    Path bottom = Path()
-      ..moveTo(0, size.height)
-      ..lineTo(size.width, size.height)
-      ..lineTo(size.width / 2, midY)
-      ..close();
-
-    // Draw outlines
-    canvas.drawPath(top, outlinePaint);
-    canvas.drawPath(bottom, outlinePaint);
-
-    if (!flipped) {
-      // Sand draining from top → bottom
-      double upperHeight = (1 - progress) * midY;
-      double lowerHeight = progress * midY;
-
-      // Top fill
-      canvas.save();
-      canvas.clipPath(top);
-      canvas.drawRect(Rect.fromLTWH(0, 0, size.width, upperHeight), sandPaint);
-      canvas.restore();
-
-      // Bottom fill
-      canvas.save();
-      canvas.clipPath(bottom);
-      canvas.drawRect(
-          Rect.fromLTWH(0, size.height - lowerHeight, size.width, lowerHeight),
-          sandPaint);
-      canvas.restore();
-    } else {
-      // Flipped mode
-      double upperHeight = progress * midY;
-      double lowerHeight = (1 - progress) * midY;
-
-      // Top fill
-      canvas.save();
-      canvas.clipPath(top);
-      canvas.drawRect(Rect.fromLTWH(0, 0, size.width, upperHeight), sandPaint);
-      canvas.restore();
-
-      // Bottom fill
-      canvas.save();
-      canvas.clipPath(bottom);
-      canvas.drawRect(
-      Rect.fromLTWH(0, size.height -
-      lowerHeight, size.width, lowerHeight),
-      sandPaint);
-      canvas.restore();
+  @override
+  void didUpdateWidget(covariant SmoothHourglass oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.secondsLeft != widget.secondsLeft) {
+      // Optional: could sync animation if needed
     }
   }
 
   @override
-  bool shouldRepaint(covariant HourglassPainter oldDelegate) =>
-      oldDelegate.progress != progress || oldDelegate.flipped != flipped;
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        double progress = _controller.value;
+        if (flipped) progress = 1 - progress;
+        return CustomPaint(
+          painter: SmoothHourglassPainter(progress: progress),
+          child: SizedBox(width: 60, height: 100),
+        );
+      },
+    );
+  }
+}
+
+class SmoothHourglassPainter extends CustomPainter {
+  final double progress;
+
+  SmoothHourglassPainter({required this.progress});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double w = size.width;
+    final double h = size.height;
+
+    // Outline paint
+    final Paint outline = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+
+    // Draw hourglass frame
+    Path frame = Path();
+    frame.moveTo(0, 0);
+    frame.lineTo(w, 0);
+    frame.lineTo(0, h);
+    frame.lineTo(w, h);
+    frame.close();
+    canvas.drawPath(frame, outline);
+    canvas.drawLine(Offset(0, 0), Offset(w, h), outline);
+    canvas.drawLine(Offset(w, 0), Offset(0, h), outline);
+
+    // Draw falling sand with gradient
+    Paint sandPaint = Paint()
+      ..shader = LinearGradient(
+        colors: [Colors.yellow, Colors.orange, Colors.redAccent],
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+      ).createShader(Rect.fromLTWH(0, 0, w, h));
+
+    // Top sand
+    Path topSand = Path();
+    topSand.moveTo(0, 0);
+    topSand.lineTo(w, 0);
+    topSand.lineTo(w/2, h/2 * (1 - progress));
+    topSand.close();
+    canvas.drawPath(topSand, sandPaint);
+
+    // Bottom sand
+    Path bottomSand = Path();
+    bottomSand.moveTo(0, h);
+    bottomSand.lineTo(w, h);
+    bottomSand.lineTo(w/2, h/2 + h/2 * progress);
+    bottomSand.close();
+    canvas.drawPath(bottomSand, sandPaint);
+
+    // Falling stream
+    Paint streamPaint = Paint()..color = Colors.orangeAccent;
+    canvas.drawRect(
+      Rect.fromCenter(
+        center: Offset(w/2, h/2),
+        width: 4,
+        height: 20 * progress,
+      ),
+      streamPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant SmoothHourglassPainter oldDelegate) => true;
 }
