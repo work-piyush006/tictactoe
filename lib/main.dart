@@ -23,8 +23,6 @@ class TicTacToeApp extends StatelessWidget {
   }
 }
 
-// ================== SPLASH SCREEN ==================
-
 class SplashScreen extends StatefulWidget {
   @override
   _SplashScreenState createState() => _SplashScreenState();
@@ -40,10 +38,10 @@ class _SplashScreenState extends State<SplashScreen>
   void initState() {
     super.initState();
 
-    // ======== AUDIO PLAYER ========
+    // ======== AUDIO PLAYER (Reliable BGM) ========
     bgmPlayer = AudioPlayer();
     bgmPlayer.setReleaseMode(ReleaseMode.loop);
-    bgmPlayer.play(AssetSource("assets/bgm.mp3")); // Ensure asset path is correct
+    playBGM();
 
     // ======== ANIMATION ========
     _controller = AnimationController(
@@ -77,10 +75,19 @@ class _SplashScreenState extends State<SplashScreen>
     });
   }
 
+  // Reliable BGM play using try-catch
+  void playBGM() async {
+    try {
+      await bgmPlayer.play(AssetSource('bgm.mp3'));
+    } catch (e) {
+      print("Error playing BGM: $e");
+    }
+  }
+
   @override
   void dispose() {
     _controller.dispose();
-    // Do NOT dispose bgmPlayer here, HomeScreen will use it
+    // Do NOT dispose bgmPlayer here, HomeScreen will continue using it
     super.dispose();
   }
 
@@ -120,7 +127,6 @@ class _SplashScreenState extends State<SplashScreen>
     );
   }
 }
-
 // ================== HOME SCREEN ==================
 
 class HomeScreen extends StatefulWidget {
@@ -136,6 +142,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int playerWins = 0, computerWins = 0, draws = 0;
   late VoidCallback _bgmListener;
+  final AudioPlayer sfxPlayer = AudioPlayer(); // For Tap/Celebration/Draw
 
   @override
   void initState() {
@@ -143,19 +150,25 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.addObserver(this);
     loadScores();
 
-    // Listener for BGM
+    // Async-safe listener for BGM
     _bgmListener = () {
-      if (widget.bgmNotifier.value) {
-        widget.bgmPlayer.resume();
-      } else {
-        widget.bgmPlayer.pause();
-      }
+      Future.microtask(() async {
+        var state = await widget.bgmPlayer.getState();
+        if (widget.bgmNotifier.value && state != PlayerState.playing) {
+          await widget.bgmPlayer.resume();
+        } else if (!widget.bgmNotifier.value) {
+          await widget.bgmPlayer.pause();
+        }
+      });
     };
     widget.bgmNotifier.addListener(_bgmListener);
 
-    // Ensure BGM plays immediately when HomeScreen opens
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (widget.bgmNotifier.value) widget.bgmPlayer.resume();
+    // Play BGM immediately if enabled
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      var state = await widget.bgmPlayer.getState();
+      if (widget.bgmNotifier.value && state != PlayerState.playing) {
+        await widget.bgmPlayer.resume();
+      }
     });
   }
 
@@ -163,15 +176,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     widget.bgmNotifier.removeListener(_bgmListener);
+    sfxPlayer.dispose(); // Dispose SFX player
     super.dispose();
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
+  void didChangeAppLifecycleState(AppLifecycleState state) async {
     if (state == AppLifecycleState.paused) {
-      widget.bgmPlayer.pause();
+      await widget.bgmPlayer.pause();
     } else if (state == AppLifecycleState.resumed) {
-      if (widget.bgmNotifier.value) widget.bgmPlayer.resume();
+      var statePlayer = await widget.bgmPlayer.getState();
+      if (widget.bgmNotifier.value && statePlayer != PlayerState.playing) {
+        await widget.bgmPlayer.resume();
+      }
     }
   }
 
@@ -186,107 +203,147 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   void navigateTo(Widget screen) {
     Navigator.push(context, MaterialPageRoute(builder: (_) => screen))
-        .then((_) {
-      if (widget.bgmNotifier.value) widget.bgmPlayer.resume();
+        .then((_) async {
+      var statePlayer = await widget.bgmPlayer.getState();
+      if (widget.bgmNotifier.value && statePlayer != PlayerState.playing) {
+        await widget.bgmPlayer.resume();
+      }
       loadScores();
     });
+  }
+
+  // Helper for button styling
+  ButtonStyle menuButton(Color color) {
+    return ElevatedButton.styleFrom(
+      minimumSize: Size(220, 55),
+      backgroundColor: color,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    );
+  }
+
+  // Helper to play SFX
+  Future<void> playSfx(String assetPath) async {
+    try {
+      await sfxPlayer.stop(); // Stop previous sound
+      await sfxPlayer.play(AssetSource(assetPath));
+    } catch (e) {
+      print("SFX error: $e");
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
+      body: SafeArea(
+        child: Container(
+          width: double.infinity,
+          decoration: BoxDecoration(
             gradient: LinearGradient(
-                colors: [Colors.deepPurple, Colors.purpleAccent],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight)),
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text("Tic Tac Toe",
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 36,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 2)),
-              SizedBox(height: 25),
-              Text(
-                "Player: $playerWins  |  Computer: $computerWins  |  Draws: $draws",
-                style: TextStyle(color: Colors.white70, fontSize: 18),
-              ),
-              SizedBox(height: 40),
-              ElevatedButton(
-                onPressed: () => navigateTo(
-                  ModeSelectionScreen(
-                    bgmPlayer: widget.bgmPlayer,
-                    bgmNotifier: widget.bgmNotifier, // required
-                  ),
+              colors: [Colors.deepPurple, Colors.purpleAccent],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+          ),
+          child: SingleChildScrollView(
+            child: Center(
+              child: Padding(
+                padding:
+                    const EdgeInsets.symmetric(vertical: 40, horizontal: 16),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      "Tic Tac Toe",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 36,
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: 2,
+                      ),
+                    ),
+                    SizedBox(height: 25),
+                    Text(
+                      "Player: $playerWins  |  Computer: $computerWins  |  Draws: $draws",
+                      style: TextStyle(color: Colors.white70, fontSize: 18),
+                      textAlign: TextAlign.center,
+                    ),
+                    SizedBox(height: 40),
+                    ElevatedButton(
+                      onPressed: () {
+                        playSfx("sounds/tap.mp3"); // Example SFX
+                        navigateTo(
+                          ModeSelectionScreen(
+                            bgmPlayer: widget.bgmPlayer,
+                            bgmNotifier: widget.bgmNotifier,
+                          ),
+                        );
+                      },
+                      style: menuButton(Colors.greenAccent.shade700),
+                      child: Text(
+                        "▶ Play Game",
+                        style: TextStyle(
+                            fontSize: 22, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    SizedBox(height: 20),
+                    ElevatedButton(
+                      onPressed: () {
+                        playSfx("sounds/tap.mp3"); // Example SFX
+                        navigateTo(
+                          TwoPlayerSymbolSelectionScreen(
+                            bgmPlayer: widget.bgmPlayer,
+                            bgmNotifier: widget.bgmNotifier,
+                          ),
+                        );
+                      },
+                      style: menuButton(Colors.blueAccent.shade700),
+                      child: Text(
+                        "👥 2 Player Game",
+                        style: TextStyle(
+                            fontSize: 22, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    SizedBox(height: 20),
+                    ElevatedButton(
+                      onPressed: () {
+                        playSfx("sounds/tap.mp3"); // Example SFX
+                        navigateTo(
+                          SettingsScreen(
+                            bgmPlayer: widget.bgmPlayer,
+                            bgmNotifier: widget.bgmNotifier,
+                          ),
+                        );
+                      },
+                      style: menuButton(Colors.orangeAccent.shade700),
+                      child: Text(
+                        "⚙ Settings",
+                        style: TextStyle(
+                            fontSize: 22, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    SizedBox(height: 20),
+                    ElevatedButton(
+                      onPressed: () {
+                        playSfx("sounds/tap.mp3"); // Example SFX
+                        navigateTo(AboutScreen());
+                      },
+                      style: menuButton(Colors.purpleAccent.shade700),
+                      child: Text(
+                        "🏆 About",
+                        style: TextStyle(
+                            fontSize: 22, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
                 ),
-                style: ElevatedButton.styleFrom(
-                    minimumSize: Size(220, 55),
-                    backgroundColor: Colors.greenAccent.shade700,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12))),
-                child: Text("▶ Play Game",
-                    style:
-                        TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
               ),
-              SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () => navigateTo(
-                  TwoPlayerSymbolSelectionScreen(
-                    bgmPlayer: widget.bgmPlayer,
-                    bgmNotifier: widget.bgmNotifier, // required
-                  ),
-                ),
-                style: ElevatedButton.styleFrom(
-                    minimumSize: Size(220, 55),
-                    backgroundColor: Colors.blueAccent.shade700,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12))),
-                child: Text("👥 2 Player Game",
-                    style:
-                        TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-              ),
-              SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () => navigateTo(
-                  SettingsScreen(
-                    bgmPlayer: widget.bgmPlayer,
-                    bgmNotifier: widget.bgmNotifier, // required
-                  ),
-                ),
-                style: ElevatedButton.styleFrom(
-                    minimumSize: Size(220, 55),
-                    backgroundColor: Colors.orangeAccent.shade700,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12))),
-                child: Text("⚙ Settings",
-                    style:
-                        TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-              ),
-              SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () => navigateTo(AboutScreen()),
-                style: ElevatedButton.styleFrom(
-                    minimumSize: Size(220, 55),
-                    backgroundColor: Colors.purpleAccent.shade700,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12))),
-                child: Text("🏆 About",
-                    style:
-                        TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-              ),
-            ],
+            ),
           ),
         ),
       ),
     );
   }
 }
-
 // ================= PART 1: SETTINGS + ABOUT =================
 
 class SettingsScreen extends StatefulWidget {
@@ -629,7 +686,7 @@ class TwoPlayerSymbolSelectionScreen extends StatelessWidget {
   }
 }
 
-// ================= Fully Fixed GameScreen =================
+// ================= Fully Fixed GameScreen with Reliable Audio =================
 class GameScreen extends StatefulWidget {
   final bool vsComputer;
   final String playerSymbol;
@@ -660,20 +717,18 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
   int playerWins = 0, computerWins = 0, draws = 0;
 
-  // Timer
   int seconds = 10;
   Timer? turnTimer;
 
   TextEditingController player1Controller = TextEditingController();
   TextEditingController player2Controller = TextEditingController();
 
-  // Confetti
   late ConfettiController confettiController;
 
   // Audio
+  late AudioPlayer tapPlayer;
   late AudioPlayer sfxPlayer;
 
-  // Glow animation
   late AnimationController glowController;
   late Animation<double> glowAnimation;
 
@@ -688,6 +743,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     player2Controller.text =
         widget.vsComputer ? "${widget.difficulty} AI" : "Player 2";
 
+    tapPlayer = AudioPlayer();
     sfxPlayer = AudioPlayer();
     confettiController = ConfettiController(duration: Duration(seconds: 2));
 
@@ -705,13 +761,15 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     loadScores();
     startTurnTimer();
 
-    // stop BGM on game screen
+    // ====== BGM Setup ======
+    widget.bgmPlayer.setReleaseMode(ReleaseMode.loop);
     if (widget.bgmNotifier.value) widget.bgmPlayer.pause();
-
     widget.bgmNotifier.addListener(() {
       if (!mounted) return;
-      if (widget.bgmNotifier.value) widget.bgmPlayer.resume();
-      else widget.bgmPlayer.pause();
+      if (widget.bgmNotifier.value)
+        widget.bgmPlayer.resume();
+      else
+        widget.bgmPlayer.pause();
     });
 
     // Computer first move if applicable
@@ -725,6 +783,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     turnTimer?.cancel();
     glowController.dispose();
     confettiController.dispose();
+    tapPlayer.dispose();
     sfxPlayer.dispose();
     player1Controller.dispose();
     player2Controller.dispose();
@@ -750,7 +809,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     prefs.setInt("draws", draws);
   }
 
-  // ------------------- Timer -------------------
   void startTurnTimer() {
     turnTimer?.cancel();
     setState(() => seconds = 10);
@@ -758,15 +816,14 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     turnTimer = Timer.periodic(Duration(seconds: 1), (timer) async {
       if (!mounted) return;
 
-      if (seconds <= 3 && seconds > 0 && widget.bgmNotifier.value) {
-        await sfxPlayer.play(AssetSource('Tap.mp3'), mode: PlayerMode.lowLatency);
+      if (seconds <= 3 && seconds > 0) {
+        tapPlayer.stop();
+        await tapPlayer.play(AssetSource('Tap.mp3'), mode: PlayerMode.lowLatency);
       }
 
       setState(() => seconds--);
 
-      if (seconds <= 0) {
-        nextTurn();
-      }
+      if (seconds <= 0) nextTurn();
     });
   }
 
@@ -775,20 +832,23 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     if (!gameOver) startTurnTimer();
   }
 
-  void playSfx(String file) async {
-    if (widget.bgmNotifier.value) {
-      await sfxPlayer.play(AssetSource(file), mode: PlayerMode.lowLatency);
-    }
+  void playTap() async {
+    tapPlayer.stop();
+    await tapPlayer.play(AssetSource('Tap.mp3'), mode: PlayerMode.lowLatency);
   }
 
-  // ------------------- Game Logic -------------------
+  void playSfx(String file) async {
+    sfxPlayer.stop();
+    await sfxPlayer.play(AssetSource(file), mode: PlayerMode.lowLatency);
+  }
+
   void makeMove(int index) {
     if (gameOver || board[index] != "") return;
     if (widget.vsComputer && isAITurn) return;
 
     setState(() {
       board[index] = currentPlayer;
-      playSfx('Tap.mp3');
+      playTap();
       checkWinner();
 
       if (!gameOver) {
@@ -849,7 +909,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
     setState(() {
       board[index] = computerSymbol;
-      playSfx('Tap.mp3');
+      playTap();
       checkWinner();
       if (!gameOver) currentPlayer = playerSymbol;
       isAITurn = false;
@@ -945,12 +1005,13 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           draws++;
 
         saveScores();
-        if (winner != "Draw")
-          playSfx('Celebration.mp3');
-        else
-          playSfx('draw.mp3');
 
-       List<List<int>> patterns = [
+        if (winner == "Draw")
+          playSfx('draw.mp3');
+        else
+          playSfx('Celebration.mp3');
+
+        List<List<int>> patterns = [
           [0, 1, 2],
           [3, 4, 5],
           [6, 7, 8],
@@ -1190,7 +1251,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 }
-
 // ================= Smooth Animated Hourglass Painter =================
 class SmoothHourglass extends StatefulWidget {
   final int secondsLeft; // 0-10
