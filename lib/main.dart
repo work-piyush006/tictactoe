@@ -1,12 +1,16 @@
 // ================= PART 1: IMPORTS & MAIN APP =================
 import 'dart:async';
-import 'dart:math';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:confetti/confetti.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  MobileAds.instance.initialize(); // AdMob initialization
   runApp(TicTacToeApp());
 }
 
@@ -18,11 +22,77 @@ class TicTacToeApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: "Tic Tac Toe",
       theme: ThemeData(fontFamily: "Poppins"),
-      home: SplashScreen(),
+      home: InternetCheckScreen(),
     );
   }
 }
 
+// ================= INTERNET CHECK =================
+class InternetCheckScreen extends StatefulWidget {
+  @override
+  _InternetCheckScreenState createState() => _InternetCheckScreenState();
+}
+
+class _InternetCheckScreenState extends State<InternetCheckScreen> {
+  @override
+  void initState() {
+    super.initState();
+    checkInternet();
+  }
+
+  Future<void> checkInternet() async {
+    var connectivityResult = await Connectivity().checkConnectivity();
+    if (connectivityResult == ConnectivityResult.none) {
+      bool isChecking = false;
+
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => StatefulBuilder(
+          builder: (context, setState) => AlertDialog(
+            title: Text("No Internet"),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text("Internet connection is required to continue."),
+                SizedBox(height: 20),
+                if (isChecking) CircularProgressIndicator(),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () async {
+                  setState(() => isChecking = true);
+                  await Future.delayed(Duration(milliseconds: 500));
+                  var result = await Connectivity().checkConnectivity();
+                  if (result != ConnectivityResult.none) {
+                    Navigator.of(context).pop();
+                    Navigator.pushReplacement(
+                      context,
+                      MaterialPageRoute(builder: (_) => SplashScreen()),
+                    );
+                  } else {
+                    setState(() => isChecking = false);
+                  }
+                },
+                child: Text("Try Again"),
+              ),
+            ],
+          ),
+        ),
+      );
+    } else {
+      Future.delayed(Duration(milliseconds: 500), () {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (_) => SplashScreen()),
+        );
+      });
+    }
+  }
+}
+
+// ================== SPLASH SCREEN ==================
 class SplashScreen extends StatefulWidget {
   @override
   _SplashScreenState createState() => _SplashScreenState();
@@ -38,28 +108,23 @@ class _SplashScreenState extends State<SplashScreen>
   void initState() {
     super.initState();
 
-    // ======== AUDIO PLAYER (Reliable BGM) ========
     bgmPlayer = AudioPlayer();
     bgmPlayer.setReleaseMode(ReleaseMode.loop);
     playBGM();
 
-    // ======== ANIMATION ========
     _controller = AnimationController(
       vsync: this,
       duration: Duration(seconds: 2),
     );
 
     _animation = Tween<double>(begin: 0.8, end: 1.2)
-        .animate(
-          CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-        )
+        .animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut))
       ..addListener(() {
         setState(() {});
       });
 
     _controller.repeat(reverse: true);
 
-    // ======== NAVIGATION TO HOME ========
     Future.delayed(Duration(seconds: 3), () {
       if (mounted) {
         Navigator.pushReplacement(
@@ -67,7 +132,7 @@ class _SplashScreenState extends State<SplashScreen>
           MaterialPageRoute(
             builder: (_) => HomeScreen(
               bgmPlayer: bgmPlayer,
-              bgmNotifier: ValueNotifier<bool>(true), // Default BGM on
+              bgmNotifier: ValueNotifier<bool>(true),
             ),
           ),
         );
@@ -75,7 +140,6 @@ class _SplashScreenState extends State<SplashScreen>
     });
   }
 
-  // Reliable BGM play using try-catch
   void playBGM() async {
     try {
       await bgmPlayer.play(AssetSource('bgm.mp3'));
@@ -87,7 +151,6 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   void dispose() {
     _controller.dispose();
-    // Do NOT dispose bgmPlayer here, HomeScreen will continue using it
     super.dispose();
   }
 
@@ -127,6 +190,7 @@ class _SplashScreenState extends State<SplashScreen>
     );
   }
 }
+
 // ================== HOME SCREEN ==================
 class HomeScreen extends StatefulWidget {
   final AudioPlayer bgmPlayer;
@@ -143,13 +207,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   late VoidCallback _bgmListener;
   final AudioPlayer sfxPlayer = AudioPlayer(); // For Tap/Celebration/Draw
 
+  // ===== BANNER VARIABLES =====
+  late BannerAd bannerAd;
+  bool isBannerAdReady = false;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     loadScores();
 
-    // Async-safe listener for BGM
     _bgmListener = () {
       if (!mounted) return;
       if (widget.bgmNotifier.value) {
@@ -160,7 +227,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     };
     widget.bgmNotifier.addListener(_bgmListener);
 
-    // Play BGM immediately if enabled
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (widget.bgmNotifier.value) {
         widget.bgmPlayer.resume();
@@ -168,6 +234,25 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         widget.bgmPlayer.pause();
       }
     });
+
+    // ===== Load Banner =====
+    bannerAd = BannerAd(
+      adUnitId: "ca-app-pub-2139593035914184/7537213546", // Replace with real banner ID
+      request: AdRequest(),
+      size: AdSize.banner,
+      listener: BannerAdListener(
+        onAdLoaded: (_) {
+          setState(() {
+            isBannerAdReady = true;
+          });
+        },
+        onAdFailedToLoad: (ad, error) {
+          ad.dispose();
+          print("Banner failed to load: $error");
+        },
+      ),
+    );
+    bannerAd.load();
   }
 
   @override
@@ -175,6 +260,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     WidgetsBinding.instance.removeObserver(this);
     widget.bgmNotifier.removeListener(_bgmListener);
     sfxPlayer.dispose();
+    bannerAd.dispose();
     super.dispose();
   }
 
@@ -205,7 +291,6 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
         .then((_) => loadScores());
   }
 
-  // Button styling helper
   ButtonStyle menuButton(Color color) {
     return ElevatedButton.styleFrom(
       minimumSize: Size(double.infinity, 55),
@@ -233,6 +318,27 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
       ],
     );
+  }
+
+  Widget bannerWidget() {
+    if (isBannerAdReady) {
+      return Container(
+        width: bannerAd.size.width.toDouble(),
+        height: bannerAd.size.height.toDouble(),
+        child: AdWidget(ad: bannerAd),
+      );
+    } else {
+      return SizedBox(
+        width: double.infinity,
+        height: 60,
+        child: Center(
+          child: Text(
+            "Loading Ad...",
+            style: TextStyle(color: Colors.white, fontSize: 18),
+          ),
+        ),
+      );
+    }
   }
 
   @override
@@ -283,12 +389,16 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                     ],
                   ),
                 ),
-                SizedBox(height: 40),
+                SizedBox(height: 30),
+
+                // Banner Ad
+                bannerWidget(),
+                SizedBox(height: 30),
 
                 // Buttons
                 ElevatedButton(
                   onPressed: () {
-                    playSfx("sounds/tap.mp3");
+                    playSfx("sounds/Tap.mp3");
                     navigateTo(
                       ModeSelectionScreen(
                         bgmPlayer: widget.bgmPlayer,
@@ -305,7 +415,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 SizedBox(height: 20),
                 ElevatedButton(
                   onPressed: () {
-                    playSfx("sounds/tap.mp3");
+                    playSfx("sounds/Tap.mp3");
                     navigateTo(
                       TwoPlayerSymbolSelectionScreen(
                         bgmPlayer: widget.bgmPlayer,
@@ -322,7 +432,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 SizedBox(height: 20),
                 ElevatedButton(
                   onPressed: () {
-                    playSfx("sounds/tap.mp3");
+                    playSfx("sounds/Tap.mp3");
                     navigateTo(
                       SettingsScreen(
                         bgmPlayer: widget.bgmPlayer,
@@ -339,7 +449,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 SizedBox(height: 20),
                 ElevatedButton(
                   onPressed: () {
-                    playSfx("sounds/tap.mp3");
+                    playSfx("sounds/Tap.mp3");
                     navigateTo(AboutScreen());
                   },
                   style: menuButton(Colors.purpleAccent.shade700),
@@ -357,6 +467,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 }
+
 // ================= PART 1: SETTINGS + ABOUT =================  
 
 class SettingsScreen extends StatefulWidget {
