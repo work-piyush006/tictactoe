@@ -840,7 +840,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     for (var p in patterns) {
       if (board[p[0]] != "" &&
           board[p[0]] == board[p[1]] &&
-          board[p[1]] == board[p[2])) return board[p[0]];
+          board[p[1]] == board[p[2]]) return board[p[0]];
     }
 
     if (!board.contains("")) return "Draw";
