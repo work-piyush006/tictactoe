@@ -570,22 +570,16 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   String winner = "";
   bool isAITurn = false;
 
-  // Timer
   Timer? turnTimer;
   int elapsedSeconds = 0;
   final int turnDuration = 10;
 
-  // Sound
-  late AudioCache sfxCache;
-
-  // Confetti
+  late AudioPlayer sfxPlayer;
   late ConfettiController confettiController;
 
-  // Animation for turn highlight
   late AnimationController glowController;
   late Animation<double> glowAnimation;
 
-  // Hourglass animation
   late AnimationController hourglassController;
 
   @override
@@ -595,9 +589,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     computerSymbol = playerSymbol == "X" ? "O" : "X";
     currentPlayer = "X";
 
-    sfxCache = AudioCache(prefix: 'assets/');
-    sfxCache.loadAll(['Tap.mp3', 'Celebration.mp3', 'draw.mp3']);
-
+    sfxPlayer = AudioPlayer();
     confettiController = ConfettiController(duration: Duration(seconds: 2));
 
     glowController = AnimationController(
@@ -612,7 +604,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
           ..addStatusListener((status) {
             if (status == AnimationStatus.completed)
               glowController.reverse();
-            else if (status == AnimationStatus.dismissed) glowController.forward();
+            else if (status == AnimationStatus.dismissed)
+              glowController.forward();
           });
     glowController.forward();
 
@@ -634,6 +627,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     confettiController.dispose();
     glowController.dispose();
     hourglassController.dispose();
+    sfxPlayer.dispose();
     super.dispose();
   }
 
@@ -661,7 +655,15 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     startTurnTimer();
   }
 
-  void playTap() => sfxCache.play('Tap.mp3');
+  void playTap() async {
+    if (!mounted) return;
+    await sfxPlayer.play(AssetSource('Tap.mp3'));
+  }
+
+  void playSfx(String file) async {
+    if (!mounted) return;
+    await sfxPlayer.play(AssetSource(file));
+  }
 
   void showWarning(String msg) {
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
@@ -742,7 +744,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         index = hardMove();
         break;
       case "Expert":
-        index = minimaxBestMove();
+        index = minimaxBestMove(); // Unbeatable AI
         break;
       default:
         index = emptyCells[Random().nextInt(emptyCells.length)];
@@ -817,8 +819,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     }
   }
 
-  void playSfx(String file) => sfxCache.play(file);
-
   int mediumMove() {
     for (int i = 0; i < 9; i++) {
       if (board[i] == "") {
@@ -853,13 +853,15 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     return move;
   }
 
+  // Expert AI
   int minimaxBestMove() {
     int bestScore = -1000;
     int move = -1;
+
     for (int i = 0; i < 9; i++) {
       if (board[i] == "") {
         board[i] = computerSymbol;
-        int score = minimax(board, false);
+        int score = minimaxAlphaBeta(board, 0, false, -1000, 1000);
         board[i] = "";
         if (score > bestScore) {
           bestScore = score;
@@ -867,25 +869,42 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         }
       }
     }
+
     return move;
   }
 
-  int minimax(List<String> newBoard, bool isMaximizing) {
-    if (checkWinnerForMinimax(newBoard, computerSymbol)) return 10;
-    if (checkWinnerForMinimax(newBoard, playerSymbol)) return -10;
+  int minimaxAlphaBeta(List<String> newBoard, int depth, bool isMaximizing, int alpha, int beta) {
+    if (checkWinnerForMinimax(newBoard, computerSymbol)) return 10 - depth;
+    if (checkWinnerForMinimax(newBoard, playerSymbol)) return depth - 10;
     if (!newBoard.contains("")) return 0;
 
-    int bestScore = isMaximizing ? -1000 : 1000;
-
-    for (int i = 0; i < 9; i++) {
-      if (newBoard[i] == "") {
-        newBoard[i] = isMaximizing ? computerSymbol : playerSymbol;
-        int score = minimax(newBoard, !isMaximizing);
-        newBoard[i] = "";
-        bestScore = isMaximizing ? max(score, bestScore) : min(score, bestScore);
+    if (isMaximizing) {
+      int maxEval = -1000;
+      for (int i = 0; i < 9; i++) {
+        if (newBoard[i] == "") {
+          newBoard[i] = computerSymbol;
+          int eval = minimaxAlphaBeta(newBoard, depth + 1, false, alpha, beta);
+          newBoard[i] = "";
+          maxEval = max(maxEval, eval);
+          alpha = max(alpha, eval);
+          if (beta <= alpha) break;
+        }
       }
+      return maxEval;
+    } else {
+      int minEval = 1000;
+      for (int i = 0; i < 9; i++) {
+        if (newBoard[i] == "") {
+          newBoard[i] = playerSymbol;
+          int eval = minimaxAlphaBeta(newBoard, depth + 1, true, alpha, beta);
+          newBoard[i] = "";
+          minEval = min(minEval, eval);
+          beta = min(beta, eval);
+          if (beta <= alpha) break;
+        }
+      }
+      return minEval;
     }
-    return bestScore;
   }
 
   bool checkWinnerForMinimax(List<String> b, String symbol) {
@@ -909,9 +928,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     double size = MediaQuery.of(context).size.width * 0.9;
-
-    int remainingSeconds = turnDuration - elapsedSeconds;
-
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.vsComputer ? "Vs Computer" : "2 Player"),
@@ -945,7 +961,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                   ),
                 ),
                 SizedBox(height: 15),
-                // Hourglass Timer
                 CustomPaint(
                   size: Size(70, 120),
                   painter: HourglassPainter(progress: hourglassController.value),
@@ -1009,7 +1024,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 }
-
 // =================== HOURGLASS PAINTER ===================
 class HourglassPainter extends CustomPainter {
   final double progress;
