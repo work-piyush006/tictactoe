@@ -151,22 +151,21 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     // Async-safe listener for BGM
     _bgmListener = () {
-      Future.microtask(() async {
-        var state = await widget.bgmPlayer.getState();
-        if (widget.bgmNotifier.value && state != PlayerState.playing) {
-          await widget.bgmPlayer.resume();
-        } else if (!widget.bgmNotifier.value) {
-          await widget.bgmPlayer.pause();
-        }
-      });
+      if (!mounted) return;
+      if (widget.bgmNotifier.value) {
+        widget.bgmPlayer.resume();
+      } else {
+        widget.bgmPlayer.pause();
+      }
     };
     widget.bgmNotifier.addListener(_bgmListener);
 
     // Play BGM immediately if enabled
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      var state = await widget.bgmPlayer.getState();
-      if (widget.bgmNotifier.value && state != PlayerState.playing) {
-        await widget.bgmPlayer.resume();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (widget.bgmNotifier.value) {
+        widget.bgmPlayer.resume();
+      } else {
+        widget.bgmPlayer.pause();
       }
     });
   }
@@ -184,9 +183,10 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (state == AppLifecycleState.paused) {
       await widget.bgmPlayer.pause();
     } else if (state == AppLifecycleState.resumed) {
-      var statePlayer = await widget.bgmPlayer.getState();
-      if (widget.bgmNotifier.value && statePlayer != PlayerState.playing) {
+      if (widget.bgmNotifier.value) {
         await widget.bgmPlayer.resume();
+      } else {
+        await widget.bgmPlayer.pause();
       }
     }
   }
@@ -202,10 +202,11 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
   void navigateTo(Widget screen) {
     Navigator.push(context, MaterialPageRoute(builder: (_) => screen))
-        .then((_) async {
-      var statePlayer = await widget.bgmPlayer.getState();
-      if (widget.bgmNotifier.value && statePlayer != PlayerState.playing) {
-        await widget.bgmPlayer.resume();
+        .then((_) {
+      if (widget.bgmNotifier.value) {
+        widget.bgmPlayer.resume();
+      } else {
+        widget.bgmPlayer.pause();
       }
       loadScores();
     });
@@ -246,8 +247,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
           child: SingleChildScrollView(
             child: Center(
               child: Padding(
-                padding:
-                    const EdgeInsets.symmetric(vertical: 40, horizontal: 16),
+                padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 16),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -280,8 +280,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       style: menuButton(Colors.greenAccent.shade700),
                       child: Text(
                         "▶ Play Game",
-                        style:
-                            TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                       ),
                     ),
                     SizedBox(height: 20),
@@ -298,8 +297,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       style: menuButton(Colors.blueAccent.shade700),
                       child: Text(
                         "👥 2 Player Game",
-                        style:
-                            TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                       ),
                     ),
                     SizedBox(height: 20),
@@ -316,8 +314,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       style: menuButton(Colors.orangeAccent.shade700),
                       child: Text(
                         "⚙ Settings",
-                        style:
-                            TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                       ),
                     ),
                     SizedBox(height: 20),
@@ -329,8 +326,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                       style: menuButton(Colors.purpleAccent.shade700),
                       child: Text(
                         "🏆 About",
-                        style:
-                            TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
                       ),
                     ),
                   ],
@@ -754,7 +750,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
   late ConfettiController confettiController;
 
-  // Audio
   late AudioPlayer tapPlayer;
   late AudioPlayer sfxPlayer;
 
@@ -764,6 +759,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+
     playerSymbol = widget.playerSymbol;
     computerSymbol = playerSymbol == "X" ? "O" : "X";
     currentPlayer = "X";
@@ -774,10 +770,11 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
     tapPlayer = AudioPlayer();
     sfxPlayer = AudioPlayer();
+
     confettiController = ConfettiController(duration: Duration(seconds: 2));
 
-    glowController = AnimationController(
-        vsync: this, duration: Duration(milliseconds: 800));
+    glowController =
+        AnimationController(vsync: this, duration: Duration(milliseconds: 800));
     glowAnimation = Tween<double>(begin: 1.0, end: 1.1)
         .animate(CurvedAnimation(parent: glowController, curve: Curves.easeInOut))
       ..addStatusListener((status) {
@@ -790,9 +787,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     loadScores();
     startTurnTimer();
 
-    // ====== BGM Setup ======
-    widget.bgmPlayer.setReleaseMode(ReleaseMode.loop);
-    if (widget.bgmNotifier.value) widget.bgmPlayer.pause();
+    // BGM Listener
     widget.bgmNotifier.addListener(() {
       if (!mounted) return;
       if (widget.bgmNotifier.value)
@@ -801,7 +796,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
         widget.bgmPlayer.pause();
     });
 
-    // Computer first move if applicable
+    // Computer starts if first turn
     if (widget.vsComputer && currentPlayer == computerSymbol) {
       Future.delayed(Duration(milliseconds: 500), computerMove);
     }
@@ -816,9 +811,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     sfxPlayer.dispose();
     player1Controller.dispose();
     player2Controller.dispose();
-
-    if (widget.bgmNotifier.value) widget.bgmPlayer.resume();
-
     super.dispose();
   }
 
@@ -833,9 +825,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
 
   Future<void> saveScores() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    prefs.setInt("playerWins", playerWins);
-    prefs.setInt("computerWins", computerWins);
-    prefs.setInt("draws", draws);
+    await prefs.setInt("playerWins", playerWins);
+    await prefs.setInt("computerWins", computerWins);
+    await prefs.setInt("draws", draws);
   }
 
   void startTurnTimer() {
@@ -846,8 +838,8 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       if (!mounted) return;
 
       if (seconds <= 3 && seconds > 0) {
-        tapPlayer.stop();
-        await tapPlayer.play(AssetSource('Tap.mp3'), mode: PlayerMode.lowLatency);
+        await tapPlayer.stop();
+        await tapPlayer.play(AssetSource('Tap.mp3'));
       }
 
       setState(() => seconds--);
@@ -862,13 +854,13 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   }
 
   void playTap() async {
-    tapPlayer.stop();
-    await tapPlayer.play(AssetSource('Tap.mp3'), mode: PlayerMode.lowLatency);
+    await tapPlayer.stop();
+    await tapPlayer.play(AssetSource('Tap.mp3'));
   }
 
   void playSfx(String file) async {
-    sfxPlayer.stop();
-    await sfxPlayer.play(AssetSource(file), mode: PlayerMode.lowLatency);
+    await sfxPlayer.stop();
+    await sfxPlayer.play(AssetSource(file));
   }
 
   void makeMove(int index) {
@@ -883,6 +875,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       if (!gameOver) {
         currentPlayer = currentPlayer == "X" ? "O" : "X";
         glowController.forward(from: 0);
+
         if (widget.vsComputer && currentPlayer == computerSymbol) {
           isAITurn = true;
           Future.delayed(Duration(milliseconds: 500), computerMove);
@@ -901,6 +894,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     setState(() {
       currentPlayer = currentPlayer == "X" ? "O" : "X";
       glowController.forward(from: 0);
+
       if (widget.vsComputer && currentPlayer == computerSymbol) {
         isAITurn = true;
         Future.delayed(Duration(milliseconds: 500), computerMove);
@@ -1135,15 +1129,14 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                         ),
                       ),
                     ),
-                    SizedBox(width: 10),
+                    SizedBox(width:10),
                     Expanded(
                       child: TextField(
                         controller: player2Controller,
-                        readOnly: widget.vsComputer,
                         onChanged: (_) => setState(() {}),
                         style: TextStyle(color: Colors.white),
                         decoration: InputDecoration(
-                          labelText: widget.vsComputer ? 'AI' : 'Player 2',
+                          labelText: widget.vsComputer ? "AI" : "Player 2",
                           labelStyle: TextStyle(color: Colors.white70),
                           enabledBorder: OutlineInputBorder(
                             borderSide: BorderSide(color: Colors.white),
@@ -1157,95 +1150,74 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                   ],
                 ),
               ),
-
-              // Scores
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    scoreCard(player1Controller.text, playerWins),
-                    scoreCard('Draw', draws),
-                    scoreCard(player2Controller.text, computerWins),
-                  ],
-                ),
-              ),
-
-              // Turn + Timer
+              SizedBox(height: 20),
+              // Scoreboard
               Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  Column(
-                    children: [
-                      Text(
-                        gameOver
-                            ? (winner == "Draw"
-                                ? "It's a Draw!"
-                                : "${winner == playerSymbol ? player1Controller.text : player2Controller.text} Wins!")
-                            : 'Turn: ${currentPlayer == playerSymbol ? player1Controller.text : player2Controller.text}',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold),
-                      ),
-                      if (!gameOver) ...[
-                        SizedBox(height: 10),
-                        SmoothHourglass(secondsLeft: seconds),
-                        SizedBox(height: 5),
-                        Text(
-                          '$seconds s',
-                          style: TextStyle(
-                            color: seconds <= 3 ? Colors.red : Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
+                  scoreCard(player1Controller.text, playerWins),
+                  scoreCard(widget.vsComputer ? "${widget.difficulty} AI" : player2Controller.text, computerWins),
+                  scoreCard("Draws", draws),
                 ],
               ),
-
               SizedBox(height: 20),
-
+              // Timer and current player
+              AnimatedBuilder(
+                animation: glowController,
+                builder: (context, child) {
+                  return Transform.scale(
+                    scale: glowAnimation.value,
+                    child: Column(
+                      children: [
+                        Text(
+                          gameOver ? "Game Over" : "$currentPlayer's Turn",
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold),
+                        ),
+                        SizedBox(height: 5),
+                        Text(
+                          "Time left: $seconds s",
+                          style: TextStyle(color: Colors.white70),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+              SizedBox(height: 20),
               // Game Board
               Container(
                 width: boardSize,
                 height: boardSize,
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(16),
+                ),
                 child: GridView.builder(
-                  physics: NeverScrollableScrollPhysics(),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 3, crossAxisSpacing: 8, mainAxisSpacing: 8),
                   itemCount: 9,
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 3),
                   itemBuilder: (context, index) {
                     bool isWinningCell = winningPattern.contains(index);
                     return GestureDetector(
                       onTap: () => makeMove(index),
-                      child: AnimatedContainer(
-                        duration: Duration(milliseconds: 300),
+                      child: Container(
+                        margin: EdgeInsets.all(4),
                         decoration: BoxDecoration(
                           color: isWinningCell
-                              ? Colors.yellowAccent
-                              : Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                                color: Colors.black26,
-                                blurRadius: 4,
-                                offset: Offset(2, 2))
-                          ],
+                              ? Colors.greenAccent
+                              : Colors.white30,
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         child: Center(
-                          child: ScaleTransition(
-                            scale: glowAnimation,
-                            child: Text(
-                              board[index],
-                              style: TextStyle(
-                                  fontSize: 48,
-                                  fontWeight: FontWeight.bold,
-                                  color: board[index] == "X"
-                                      ? Colors.deepPurple
-                                      : Colors.pinkAccent),
-                            ),
+                          child: Text(
+                            board[index],
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 48,
+                                fontWeight: FontWeight.bold),
                           ),
                         ),
                       ),
@@ -1253,25 +1225,31 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
                   },
                 ),
               ),
-
               SizedBox(height: 20),
-
               // Reset Button
               ElevatedButton.icon(
                 onPressed: resetGame,
-                icon: Icon(Icons.refresh),
-                label: Text("Restart Game"),
+                icon: Icon(Icons.replay),
+                label: Text("Restart"),
                 style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: Colors.deepPurple),
+                  backgroundColor: Colors.deepPurpleAccent,
+                  padding:
+                      EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+                  textStyle:
+                      TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
               ),
-
-              // Confetti
+              SizedBox(height: 20),
+              // Confetti Overlay
               ConfettiWidget(
                 confettiController: confettiController,
                 blastDirectionality: BlastDirectionality.explosive,
                 shouldLoop: false,
-                colors: [Colors.yellow, Colors.red, Colors.green, Colors.blue],
+                colors: [Colors.yellow, Colors.green, Colors.blue, Colors.pink, Colors.orange],
+                numberOfParticles: 20,
+                gravity: 0.3,
+                maxBlastForce: 20,
+                minBlastForce: 5,
               ),
             ],
           ),
