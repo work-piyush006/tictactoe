@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:confetti/confetti.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'dart:math';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -28,11 +29,6 @@ class TicTacToeApp extends StatelessWidget {
 }
 
 // ================= INTERNET CHECK =================
-class InternetCheckScreen extends StatefulWidget {
-  @override
-  _InternetCheckScreenState createState() => _InternetCheckScreenState();
-}
-
 class _InternetCheckScreenState extends State<InternetCheckScreen> {
   @override
   void initState() {
@@ -40,11 +36,20 @@ class _InternetCheckScreenState extends State<InternetCheckScreen> {
     checkInternet();
   }
 
+  @override
+  Widget build(BuildContext context) {
+    // Simple placeholder while checking internet
+    return Scaffold(
+      body: Center(
+        child: CircularProgressIndicator(),
+      ),
+    );
+  }
+
   Future<void> checkInternet() async {
     var connectivityResult = await Connectivity().checkConnectivity();
     if (connectivityResult == ConnectivityResult.none) {
       bool isChecking = false;
-
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -90,7 +95,7 @@ class _InternetCheckScreenState extends State<InternetCheckScreen> {
       });
     }
   }
-}
+} 
 
 // ================== SPLASH SCREEN ==================
 class SplashScreen extends StatefulWidget {
