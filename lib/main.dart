@@ -646,13 +646,19 @@ class _GameScreenState extends State<GameScreen> {
     List<int> emptyCells = [for (int i = 0; i < 9; i++) if (board[i] == "") i];
     if (emptyCells.isEmpty) return;
 
-    int index = switch (widget.difficulty) {
-      "Easy" => emptyCells[Random().nextInt(emptyCells.length)],
-      "Medium" => mediumMove(),
-      "Hard" => hardMove(),
-      "Expert" => minimaxBestMove(),
-      _ => emptyCells[Random().nextInt(emptyCells.length)],
-    };
+    int index;
+
+    if (widget.difficulty == "Easy") {
+      index = emptyCells[Random().nextInt(emptyCells.length)];
+    } else if (widget.difficulty == "Medium") {
+      index = mediumMove();
+    } else if (widget.difficulty == "Hard") {
+      index = hardMove();
+    } else if (widget.difficulty == "Expert") {
+      index = minimaxBestMove();
+    } else {
+      index = emptyCells[Random().nextInt(emptyCells.length)];
+    }
 
     setState(() {
       board[index] = computerSymbol;
