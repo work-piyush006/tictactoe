@@ -1,15 +1,15 @@
 name: tic_tac_toe
-description: A Tic Tac Toe Game Pro built with Flutter
-publish_to: 'none'
+description: A Tic Tac Toe game with modern UI
+publish_to: "none" # remove this if publishing
 version: 1.0.0+1
 
 environment:
-  sdk: ">=2.18.0 <4.0.0"
+  sdk: ">=2.18.0 <3.0.0"
 
 dependencies:
   flutter:
     sdk: flutter
-  audioplayers: ^1.0.1
+  audioplayers: ^3.0.1
   shared_preferences: ^2.1.1
   confetti: ^0.6.0
 
@@ -19,11 +19,19 @@ dev_dependencies:
   flutter_lints: ^2.0.0
 
 flutter:
+
   uses-material-design: true
 
   assets:
+    - assets/logo.png
     - assets/bgm.mp3
     - assets/Tap.mp3
     - assets/Celebration.mp3
     - assets/draw.mp3
-    - assets/logo.png
+
+  fonts:
+    - family: Poppins
+      fonts:
+        - asset: assets/fonts/Poppins-Regular.ttf
+        - asset: assets/fonts/Poppins-Bold.ttf
+          weight: 700
