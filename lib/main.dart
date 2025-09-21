@@ -17,13 +17,14 @@ class TicTacToeApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: "Tic Tac Toe",
-      theme: ThemeData(fontFamily: "Roboto"),
+      theme: ThemeData(fontFamily: "Poppins"),
       home: SplashScreen(),
     );
   }
 }
 
 // ================== SPLASH SCREEN ==================
+
 class SplashScreen extends StatefulWidget {
   @override
   _SplashScreenState createState() => _SplashScreenState();
@@ -38,25 +39,40 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   void initState() {
     super.initState();
+
+    // ======== AUDIO PLAYER ========
     bgmPlayer = AudioPlayer();
     bgmPlayer.setReleaseMode(ReleaseMode.loop);
-    bgmPlayer.play(AssetSource("bgm.mp3"));
+    bgmPlayer.play(AssetSource("assets/bgm.mp3")); // Ensure asset path is correct
 
-    _controller =
-        AnimationController(vsync: this, duration: Duration(seconds: 2));
+    // ======== ANIMATION ========
+    _controller = AnimationController(
+      vsync: this,
+      duration: Duration(seconds: 2),
+    );
+
     _animation = Tween<double>(begin: 0.8, end: 1.2)
-        .animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut))
+        .animate(
+          CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
+        )
       ..addListener(() {
         setState(() {});
       });
+
     _controller.repeat(reverse: true);
 
+    // ======== NAVIGATION TO HOME ========
     Future.delayed(Duration(seconds: 3), () {
       if (mounted) {
         Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(
-                builder: (_) => HomeScreen(bgmPlayer: bgmPlayer)));
+          context,
+          MaterialPageRoute(
+            builder: (_) => HomeScreen(
+              bgmPlayer: bgmPlayer,
+              bgmNotifier: ValueNotifier<bool>(true), // Default BGM on
+            ),
+          ),
+        );
       }
     });
   }
@@ -64,6 +80,7 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   void dispose() {
     _controller.dispose();
+    // Do NOT dispose bgmPlayer here, HomeScreen will use it
     super.dispose();
   }
 
@@ -72,10 +89,12 @@ class _SplashScreenState extends State<SplashScreen>
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
-            gradient: LinearGradient(
-                colors: [Colors.deepPurple, Colors.purpleAccent],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight)),
+          gradient: LinearGradient(
+            colors: [Colors.deepPurple, Colors.purpleAccent],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
         child: Center(
           child: Transform.scale(
             scale: _animation.value,
@@ -87,10 +106,11 @@ class _SplashScreenState extends State<SplashScreen>
                 Text(
                   "Tic Tac Toe",
                   style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 36,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 3),
+                    color: Colors.white,
+                    fontSize: 36,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 3,
+                  ),
                 ),
               ],
             ),
