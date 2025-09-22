@@ -73,7 +73,7 @@ jobs:
           mavenCentral()
           }
           }" > android/build.gradle
-          fi
+          
 
       - name: Patch android/app/build.gradle for Ads & Google Services
         run: |
@@ -83,6 +83,7 @@ jobs:
           fi
           if ! grep -q "com.google.android.gms:play-services-ads" "$FILE"; then
             sed -i '/dependencies {/a\    implementation "com.google.android.gms:play-services-ads:23.1.0"' "$FILE"
+            fi
 
       - name: Build APK
         run: flutter build apk --release
