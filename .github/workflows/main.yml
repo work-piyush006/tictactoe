@@ -13,11 +13,12 @@ jobs:
     runs-on: ubuntu-latest
     name: Build Android APK & AAB
     steps:
-      # 1. Checkout repo
+
+      # 1️⃣ Checkout the repository
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2. Setup Flutter (force 3.22.2 → Dart 3.4+)
+      # 2️⃣ Setup Flutter (3.22.2 stable)
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -25,18 +26,25 @@ jobs:
           channel: "stable"
           cache: true
 
-      # 3. Install dependencies
-      - name: Install dependencies
+      # 3️⃣ Install dependencies
+      - name: Install Flutter dependencies
         run: flutter pub get
 
-      # 4. Remove existing android folder and generate fresh Android project
+      # 4️⃣ Remove existing Android folder & generate fresh Android project
       - name: Generate fresh Android platform
         run: |
-          echo "🛠 Removing existing android folder (if any)..."
+          echo "🛠 Removing existing android folder..."
           rm -rf android
           flutter create --platforms=android .
 
-      # 5. Wait until AndroidManifest.xml exists
+      # 5️⃣ Update compileSdkVersion, targetSdkVersion & Kotlin version
+      - name: Set SDK & Kotlin versions
+        run: |
+          sed -i 's/compileSdkVersion .*/compileSdkVersion 35/' android/app/build.gradle
+          sed -i 's/targetSdkVersion .*/targetSdkVersion 35/' android/app/build.gradle
+          sed -i "s/ext.kotlin_version = .*/ext.kotlin_version = '1.9.10'/" android/build.gradle
+
+      # 6️⃣ Wait until AndroidManifest.xml exists
       - name: Wait for AndroidManifest.xml
         run: |
           COUNT=0
@@ -50,7 +58,7 @@ jobs:
           done
           echo "✅ AndroidManifest.xml found"
 
-      # 6. Add INTERNET permission
+      # 7️⃣ Add INTERNET permission
       - name: Add Internet permission
         run: |
           MANIFEST="android/app/src/main/AndroidManifest.xml"
@@ -58,18 +66,17 @@ jobs:
             sed -i '/<application/i\    <uses-permission android:name="android.permission.INTERNET"/>' $MANIFEST
           fi
 
-      # 7. Copy Firebase google-services.json
+      # 8️⃣ Copy Firebase google-services.json if exists
       - name: Copy Firebase config
         run: |
           if [ -f "firebase/google-services.json" ]; then
-            mkdir -p android/app
             cp firebase/google-services.json android/app/google-services.json
             echo "✅ google-services.json copied"
           else
             echo "⚠️ firebase/google-services.json not found, skipping..."
           fi
 
-      # 8. Patch android/build.gradle (Google Services)
+      # 9️⃣ Patch android/build.gradle for Google Services
       - name: Patch android/build.gradle
         run: |
           FILE="android/build.gradle"
@@ -80,25 +87,24 @@ jobs:
             sed -i '/repositories {/a\        google()' $FILE
           fi
 
-      # 9. Patch android/app/build.gradle for ads
-      - name: Patch android/app/build.gradle (ads)
+      # 🔟 Patch android/app/build.gradle for Ads
+      - name: Patch android/app/build.gradle (Ads)
         run: |
           FILE="android/app/build.gradle"
-          # Ensure play-services-ads added
           if ! grep -q "com.google.android.gms:play-services-ads" $FILE; then
-            sed -i '/dependencies {/a\    implementation "com.google.android.gms:play-services-ads:23.1.0"' $FILE
+            sed -i '/dependencies {/a\    implementation "com.google.android.gms:play-services-ads:23.4.0"' $FILE
           fi
-          echo "✅ android/app/build.gradle patched for Ads"
+          echo "✅ Patched android/app/build.gradle for Ads"
 
-      # 10. Build APK
+      # 1️⃣1️⃣ Build APK
       - name: Build APK
         run: flutter build apk --release
 
-      # 11. Build AAB
+      # 1️⃣2️⃣ Build AAB
       - name: Build AAB
         run: flutter build appbundle --release
 
-      # 12. Upload APK & AAB artifacts
+      # 1️⃣3️⃣ Upload APK & AAB artifacts
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
