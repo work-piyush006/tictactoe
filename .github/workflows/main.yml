@@ -71,7 +71,7 @@ jobs:
       # 8️⃣ Patch android/build.gradle (Kotlin + Google Services)
       - name: Patch android/build.gradle
         run: |
-          cat << 'EOF' > android/build.gradle
+cat << 'EOF' > android/build.gradle
 buildscript {
     ext.kotlin_version = '1.9.10'
     repositories {
