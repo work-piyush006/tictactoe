@@ -7,9 +7,12 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:confetti/confetti.dart';
 import 'dart:math';
+import 'package:firebase_core/firebase_core.dart'; // Firebase import
+
 // ================== MAIN =================
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(); // Firebase initialization
   await MobileAds.instance.initialize();
   runApp(TicTacToeApp());
 }
@@ -236,21 +239,20 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     };
     widget.bgmNotifier.addListener(_bgmListener);
 
-    // Load Banner (Test Ad)
     bannerAd = BannerAd(
-  adUnitId: 'ca-app-pub-3940256099942544/6300978111', // Banner test ID
-  size: AdSize.banner,
-  request: AdRequest(),
-  listener: BannerAdListener(
-    onAdLoaded: (_) {
-      if (mounted) setState(() => isBannerAdReady = true);
-    },
-    onAdFailedToLoad: (ad, error) {
-      ad.dispose();
-      print("Banner failed to load: $error");
-    },
-  ),
-);
+      adUnitId: 'ca-app-pub-3940256099942544/6300978111', // Test Banner
+      size: AdSize.banner,
+      request: AdRequest(),
+      listener: BannerAdListener(
+        onAdLoaded: (_) {
+          if (mounted) setState(() => isBannerAdReady = true);
+        },
+        onAdFailedToLoad: (ad, error) {
+          ad.dispose();
+          print("Banner failed to load: $error");
+        },
+      ),
+    );
     bannerAd.load();
   }
 
@@ -316,7 +318,8 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       return SizedBox(
         width: double.infinity,
         height: 60,
-        child: Center(child: Text("Loading Ad...", style: TextStyle(color: Colors.white))),
+        child:
+            Center(child: Text("Loading Ad...", style: TextStyle(color: Colors.white))),
       );
     }
   }
@@ -381,55 +384,54 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 SizedBox(height: 30),
                 _bannerWidget(),
                 SizedBox(height: 30),
-                  // Buttons
                 ElevatedButton(
-                onPressed: () {_playSfx("assets/Tap.mp3");
-            _navigateTo(ModeSelectionScreen(
-            bgmPlayer: widget.bgmPlayer,
-            bgmNotifier: widget.bgmNotifier,
-            ));
-            },
-            style: _menuButton(Colors.
-            greenAccent.shade700),
-            child: Text("▶ Play Game",
-            style: TextStyle(fontSize: 22,
-            fontWeight: FontWeight.bold)),
-            ),
-            SizedBox(height: 20),
-            ElevatedButton(
-            onPressed: () {
-            _playSfx("assets/Tap.mp3");_navigateTo(TwoPlayerSymbolSelectionScreen(
-      bgmPlayer: widget.bgmPlayer,
-      bgmNotifier: widget.bgmNotifier,
-    ));
-  },
-  style: _menuButton(Colors.blueAccent.shade700),
-  child: Text("👥 2 Player Game",
-      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-),
-SizedBox(height: 20),
-ElevatedButton(
-  onPressed: () {
-    _playSfx("assets/Tap.mp3");
-    _navigateTo(SettingsScreen(
-      bgmPlayer: widget.bgmPlayer,
-      bgmNotifier: widget.bgmNotifier,
-    ));
-  },
-  style: _menuButton(Colors.orangeAccent.shade700),
-  child: Text("⚙ Settings",
-      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-),
-SizedBox(height: 20),
-ElevatedButton(
-  onPressed: () {
-    _playSfx("assets/Tap.mp3");
-    _navigateTo(AboutScreen());
-  },
-  style: _menuButton(Colors.purpleAccent.shade700),
-  child: Text("🏆 About",
-      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-),
+                  onPressed: () {
+                    _playSfx("assets/Tap.mp3");
+                    _navigateTo(ModeSelectionScreen(
+                      bgmPlayer: widget.bgmPlayer,
+                      bgmNotifier: widget.bgmNotifier,
+                    ));
+                  },
+                  style: _menuButton(Colors.greenAccent.shade700),
+                  child: Text("▶ Play Game",
+                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                ),
+                SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () {
+                    _playSfx("assets/Tap.mp3");
+                    _navigateTo(TwoPlayerSymbolSelectionScreen(
+                      bgmPlayer: widget.bgmPlayer,
+                      bgmNotifier: widget.bgmNotifier,
+                    ));
+                  },
+                  style: _menuButton(Colors.blueAccent.shade700),
+                  child: Text("👥 2 Player Game",
+                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                ),
+                SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () {
+                    _playSfx("assets/Tap.mp3");
+                    _navigateTo(SettingsScreen(
+                      bgmPlayer: widget.bgmPlayer,
+                      bgmNotifier: widget.bgmNotifier,
+                    ));
+                  },
+                  style: _menuButton(Colors.orangeAccent.shade700),
+                  child: Text("⚙ Settings",
+                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                ),
+                SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () {
+                    _playSfx("assets/Tap.mp3");
+                    _navigateTo(AboutScreen());
+                  },
+                  style: _menuButton(Colors.purpleAccent.shade700),
+                  child: Text("🏆 About",
+                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                ),
                 SizedBox(height: 40),
               ],
             ),
