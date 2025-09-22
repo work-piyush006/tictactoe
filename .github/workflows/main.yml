@@ -12,98 +12,109 @@ jobs:
   build-android:
     runs-on: ubuntu-latest
     name: Build Android APK & AAB
+
     steps:
-      # 1️⃣ Checkout repo
-      - name: Checkout repository
+      # 1. Checkout repository
+      - name: 1️⃣ Checkout repository
         uses: actions/checkout@v3
 
-      # 2️⃣ Setup Flutter (force 3.22.2 → Dart 3.4+)
-      - name: Setup Flutter
+      # 2. Setup Flutter
+      - name: 2️⃣ Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: "3.22.2"
           channel: "stable"
           cache: true
 
-      # 3️⃣ Install dependencies
-      - name: Install dependencies
+      # 3. Install dependencies
+      - name: 3️⃣ Install dependencies
         run: flutter pub get
 
-      # 4️⃣ Remove existing android folder & generate fresh Android project
-      - name: Generate fresh Android platform
+      # 4. Remove existing android folder and generate fresh Android project
+      - name: 4️⃣ Generate fresh Android platform
         run: |
-          echo "🛠 Removing existing android folder (if any)..."
+          echo "🛠 Removing existing android folder..."
           rm -rf android
           flutter create --platforms=android .
 
-      # 5️⃣ Wait until AndroidManifest.xml exists
-      - name: Wait for AndroidManifest.xml
+      # 5. Wait until AndroidManifest.xml exists
+      - name: 5️⃣ Wait for AndroidManifest.xml
         run: |
           COUNT=0
           while [ ! -f "android/app/src/main/AndroidManifest.xml" ]; do
             sleep 1
             COUNT=$((COUNT+1))
-            if [ $COUNT -gt 20 ]; then
-              echo "❌ AndroidManifest.xml not found after 20s"
+            if [ $COUNT -gt 30 ]; then
+              echo "❌ AndroidManifest.xml not found after 30s"
               exit 1
             fi
           done
           echo "✅ AndroidManifest.xml found"
 
-      # 6️⃣ Add INTERNET permission
-      - name: Add Internet permission
+      # 6. Add INTERNET permission
+      - name: 6️⃣ Add Internet permission
         run: |
           MANIFEST="android/app/src/main/AndroidManifest.xml"
           if ! grep -q 'android.permission.INTERNET' $MANIFEST; then
             sed -i '/<application/i\    <uses-permission android:name="android.permission.INTERNET"/>' $MANIFEST
           fi
 
-      # 7️⃣ Copy Firebase google-services.json
-      - name: Copy Firebase config
+      # 7. Copy Firebase google-services.json if exists
+      - name: 7️⃣ Copy Firebase config
         run: |
           if [ -f "firebase/google-services.json" ]; then
-            mkdir -p android/app
             cp firebase/google-services.json android/app/google-services.json
             echo "✅ google-services.json copied"
           else
-            echo "⚠️ firebase/google-services.json not found, skipping..."
+            echo "⚠️ google-services.json not found, skipping..."
           fi
 
-      # 8️⃣ Patch android/build.gradle for Kotlin & Google Services
-      - name: Patch android/build.gradle
+      # 8. Patch android/build.gradle (Google repos & services)
+      - name: 8️⃣ Patch android/build.gradle
         run: |
           FILE="android/build.gradle"
-          sed -i '1i buildscript {\n    ext.kotlin_version = "1.9.10"\n    repositories {\n        google()\n        mavenCentral()\n    }\n    dependencies {\n        classpath "com.android.tools.build:gradle:8.1.1"\n        classpath "com.google.gms:google-services:4.4.2"\n    }\n}' $FILE
+          # Add google() repository
           if ! grep -q "google()" $FILE; then
             sed -i '/repositories {/a\        google()' $FILE
           fi
+          # Add Google Services classpath
+          if ! grep -q "com.google.gms:google-services" $FILE; then
+            sed -i '/dependencies {/a\        classpath "com.google.gms:google-services:4.4.2"' $FILE
+          fi
+          # Set Kotlin version
+          if ! grep -q "ext.kotlin_version" $FILE; then
+            sed -i '/dependencies {/i\ext.kotlin_version = "1.9.10"' $FILE
+          else
+            sed -i 's/ext.kotlin_version = .*/ext.kotlin_version = "1.9.10"/' $FILE
+          fi
 
-      # 9️⃣ Patch android/app/build.gradle for SDK, Ads, and plugin
-      - name: Patch android/app/build.gradle
+      # 9. Patch android/app/build.gradle for Ads & Google Services safely
+      - name: 9️⃣ Patch android/app/build.gradle
         run: |
           FILE="android/app/build.gradle"
-          # Apply google services plugin at top
-          if ! grep -q "com.google.gms.google-services" $FILE; then
-            sed -i '1iapply plugin: "com.google.gms.google-services"' $FILE
-          fi
-          # Add ads dependency if missing
+          # Add play-services-ads if missing
           if ! grep -q "com.google.android.gms:play-services-ads" $FILE; then
             sed -i '/dependencies {/a\    implementation "com.google.android.gms:play-services-ads:23.4.0"' $FILE
           fi
-          # Ensure SDK versions
-          sed -i '/android {/a\    compileSdkVersion 35\n    defaultConfig {\n        minSdkVersion 21\n        targetSdkVersion 35\n    }' $FILE
-          echo "✅ android/app/build.gradle patched"
+          # Add apply plugin at bottom (after plugins block)
+          if ! grep -q "com.google.gms.google-services" $FILE; then
+            echo 'apply plugin: "com.google.gms.google-services"' >> $FILE
+          fi
+          # Ensure compileSdkVersion 35
+          sed -i 's/compileSdkVersion .*/compileSdkVersion 35/' $FILE
+          # Ensure targetSdkVersion 35
+          sed -i 's/targetSdkVersion .*/targetSdkVersion 35/' $FILE
 
-      # 🔟 Build APK
-      - name: Build APK
+      # 10. Build APK
+      - name: 1️⃣0️⃣ Build APK
         run: flutter build apk --release
 
-      # 1️⃣1️⃣ Build AAB
-      - name: Build AAB
+      # 11. Build AAB
+      - name: 1️⃣1️⃣ Build AAB
         run: flutter build appbundle --release
 
-      # 1️⃣2️⃣ Upload artifacts
-      - name: Upload artifacts
+      # 12. Upload APK & AAB artifacts
+      - name: 1️⃣2️⃣ Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: build-artifacts
