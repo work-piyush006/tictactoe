@@ -11,7 +11,6 @@ on:
 jobs:
   build-android:
     runs-on: ubuntu-latest
-    name: Build Android APK & AAB
     steps:
 
       - name: Checkout repository
@@ -46,8 +45,8 @@ jobs:
       - name: Add Internet permission
         run: |
           MANIFEST="android/app/src/main/AndroidManifest.xml"
-          if ! grep -q 'android.permission.INTERNET' $MANIFEST; then
-            sed -i '/<application/i\    <uses-permission android:name="android.permission.INTERNET"/>' $MANIFEST
+          if ! grep -q 'android.permission.INTERNET' "$MANIFEST"; then
+            sed -i '/<application/i\    <uses-permission android:name="android.permission.INTERNET"/>' "$MANIFEST"
 
       - name: Copy Firebase config
         run: |
@@ -55,29 +54,38 @@ jobs:
             mkdir -p android/app
             cp firebase/google-services.json android/app/google-services.json
 
-      - name: Patch android/build.gradle (Kotlin + Google Services)
+      - name: Patch android/build.gradle
         run: |
-          echo "buildscript {\
-          ext.kotlin_version = '1.9.10';\
-          repositories { google(); mavenCentral(); };\
-          dependencies {\
-          classpath 'com.android.tools.build:gradle:8.1.0';\
-          classpath 'com.google.gms:google-services:4.4.2';\
-          classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version';\
-          }\
-          }\
-          allprojects {\
-          repositories { google(); mavenCentral(); }\
-          }" > android/build.gradle
+          cat << 'EOF' > android/build.gradle
+buildscript {
+    ext.kotlin_version = '1.9.10'
+    repositories {
+        google()
+        mavenCentral()
+    }
+    dependencies {
+        classpath "com.android.tools.build:gradle:8.1.0"
+        classpath "com.google.gms:google-services:4.4.2"
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+EOF
 
       - name: Patch android/app/build.gradle for Ads & Google Services
         run: |
           FILE="android/app/build.gradle"
-          if ! grep -q "com.google.gms.google-services" $FILE; then
-            sed -i '1iapply plugin: "com.google.gms.google-services"' $FILE
+          if ! grep -q "com.google.gms.google-services" "$FILE"; then
+            sed -i '1iapply plugin: "com.google.gms.google-services"' "$FILE"
           fi
-          if ! grep -q "com.google.android.gms:play-services-ads" $FILE; then
-            sed -i '/dependencies {/a\    implementation "com.google.android.gms:play-services-ads:23.1.0"' $FILE
+          if ! grep -q "com.google.android.gms:play-services-ads" "$FILE"; then
+            sed -i '/dependencies {/a\    implementation "com.google.android.gms:play-services-ads:23.1.0"' "$FILE"
 
       - name: Build APK
         run: flutter build apk --release
