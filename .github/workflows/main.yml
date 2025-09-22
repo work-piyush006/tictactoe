@@ -13,30 +13,29 @@ jobs:
     runs-on: ubuntu-latest
     name: Build Android APK
     steps:
-
-      # 0. Install basic utilities (tar, unzip, curl, git)
-      - name: Install dependencies
-        run: sudo apt-get update && sudo apt-get install -y tar unzip curl git
-
       # 1. Checkout repo
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2. Setup Flutter 3.16.3 (Dart 3.6+)
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.16.3'
-          channel: stable
+      # 2. Install dependencies for tar/git (needed by Flutter clone)
+      - name: Install required tools
+        run: sudo apt-get update && sudo apt-get install -y git curl unzip tar
 
-      # 3. Recreate Android folder safely
+      # 3. Force install Flutter 3.16.3 (Dart 3.6+)
+      - name: Install Flutter 3.16.3
+        run: |
+          git clone https://github.com/flutter/flutter.git -b stable --depth 1 $HOME/flutter
+          echo "$HOME/flutter/bin" >> $GITHUB_PATH
+          flutter --version
+
+      # 4. Recreate Android folder safely
       - name: Recreate Android Folder
         run: |
           rm -rf android
           flutter create .
           echo "Fresh Android folder created"
 
-      # 4. Add INTERNET permission
+      # 5. Add INTERNET permission
       - name: Add Internet Permission
         run: |
           if ! grep -q 'android.permission.INTERNET' android/app/src/main/AndroidManifest.xml; then
@@ -44,7 +43,7 @@ jobs:
             echo "Added INTERNET permission"
           fi
 
-      # 5. Copy google-services.json
+      # 6. Copy google-services.json
       - name: Copy google-services.json
         run: |
           if [ -f firebase/google-services.json ]; then
@@ -54,7 +53,7 @@ jobs:
             echo "Warning: google-services.json not found!"
           fi
 
-      # 6. Setup Firebase plugin
+      # 7. Setup Firebase plugin
       - name: Setup Firebase in build.gradle
         run: |
           if ! grep -q "com.google.gms:google-services" android/build.gradle; then
@@ -66,7 +65,7 @@ jobs:
             echo "Applied Google Services plugin in app/build.gradle"
           fi
 
-      # 7. Update SDK versions & Kotlin
+      # 8. Update SDK versions & Kotlin
       - name: Update SDK & Kotlin
         run: |
           sed -i 's/compileSdkVersion .*/compileSdkVersion 34/' android/app/build.gradle
@@ -74,11 +73,11 @@ jobs:
           sed -i 's/ext.kotlin_version = .*/ext.kotlin_version = "1.8.21"/' android/build.gradle
           echo "Updated compileSdkVersion, targetSdkVersion, and Kotlin version"
 
-      # 8. Get dependencies
+      # 9. Fetch dependencies
       - name: Flutter Pub Get
         run: flutter pub get
 
-      # 9. Replace launcher icon
+      # 10. Replace launcher icon
       - name: Replace Flutter Logo in Android
         run: |
           LOGO="assets/logo.png"
@@ -87,15 +86,15 @@ jobs:
           done
           echo "Logo replaced in all mipmap folders"
 
-      # 10. Clean previous build
+      # 11. Clean previous build
       - name: Flutter Clean
         run: flutter clean
 
-      # 11. Build Release APK
+      # 12. Build Release APK
       - name: Build Release APK
         run: flutter build apk --release --no-tree-shake-icons
 
-      # 12. Upload APK
+      # 13. Upload APK
       - name: Upload Android APK
         uses: actions/upload-artifact@v4
         with:
