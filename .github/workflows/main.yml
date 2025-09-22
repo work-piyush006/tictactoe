@@ -11,16 +11,17 @@ on:
 jobs:
   build-android:
     runs-on: ubuntu-latest
+    env:
+      PATH: $HOME/flutter/bin:$PATH
     name: Build Android APK
     steps:
       # 1. Checkout repo
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2. Install Flutter 3.16.x (Dart 3.6+)
-      - name: Install Flutter
+      # 2. Install Flutter 3.16.3 (Dart 3.6+)
+      - name: Setup Flutter
         run: |
-          rm -rf $HOME/flutter
           git clone -b stable https://github.com/flutter/flutter.git $HOME/flutter
           export PATH="$HOME/flutter/bin:$PATH"
           flutter --version
@@ -29,6 +30,7 @@ jobs:
       # 3. Recreate Android folder safely
       - name: Recreate Android Folder
         run: |
+          export PATH="$HOME/flutter/bin:$PATH"
           rm -rf android
           flutter create .
           echo "Fresh Android folder created"
@@ -46,7 +48,7 @@ jobs:
         run: |
           if [ -f firebase/google-services.json ]; then
             cp -f firebase/google-services.json android/app/
-            echo "google-services.json copied"
+            echo "google-services.json copied to android/app/"
           else
             echo "Warning: google-services.json not found!"
           fi
@@ -56,14 +58,14 @@ jobs:
         run: |
           if ! grep -q "com.google.gms:google-services" android/build.gradle; then
             sed -i "/dependencies {/a \        classpath 'com.google.gms:google-services:4.4.0'" android/build.gradle
-            echo "Added Google Services classpath"
+            echo "Added Google Services classpath in build.gradle"
           fi
           if ! grep -q "com.google.gms.google-services" android/app/build.gradle; then
             echo "apply plugin: 'com.google.gms.google-services'" >> android/app/build.gradle
-            echo "Applied Google Services plugin"
+            echo "Applied Google Services plugin in app/build.gradle"
           fi
 
-      # 7. Update SDK versions & Kotlin
+      # 7. Update compileSdkVersion, targetSdkVersion & Kotlin
       - name: Update SDK & Kotlin
         run: |
           sed -i 's/compileSdkVersion .*/compileSdkVersion 34/' android/app/build.gradle
@@ -73,7 +75,9 @@ jobs:
 
       # 8. Get dependencies
       - name: Flutter Pub Get
-        run: flutter pub get
+        run: |
+          export PATH="$HOME/flutter/bin:$PATH"
+          flutter pub get
 
       # 9. Replace launcher icon
       - name: Replace Flutter Logo in Android
@@ -86,11 +90,15 @@ jobs:
 
       # 10. Clean previous build
       - name: Flutter Clean
-        run: flutter clean
+        run: |
+          export PATH="$HOME/flutter/bin:$PATH"
+          flutter clean
 
       # 11. Build Release APK
       - name: Build Release APK
-        run: flutter build apk --release --no-tree-shake-icons
+        run: |
+          export PATH="$HOME/flutter/bin:$PATH"
+          flutter build apk --release --no-tree-shake-icons
 
       # 12. Upload APK
       - name: Upload Android APK
