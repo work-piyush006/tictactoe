@@ -5,8 +5,8 @@ publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: ">=3.6.0 <4.0.0"
-  flutter: ">=3.13.0"
+  sdk: ">=3.2.0 <4.0.0"
+  flutter: ">=3.0.0"
 
 dependencies:
   flutter:
@@ -18,10 +18,10 @@ dependencies:
   confetti: ^0.8.0
   connectivity_plus: ^7.0.0
 
-  # Ads + Firebase (Dart 3.6+ compatible)
-  google_mobile_ads: ^6.0.0
+  # Ads + Firebase (compatible with Dart 3.2.x)
+  google_mobile_ads: ^5.0.0
   firebase_core: ^4.1.0
-  firebase_analytics: ^12.0.1
+  firebase_analytics: ^11.2.0
 
   # UI icons
   cupertino_icons: ^1.0.5
