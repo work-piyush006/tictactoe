@@ -11,7 +11,7 @@ on:
 jobs:
   build-android:
     runs-on: ubuntu-latest
-    name: Build Android APK
+    name: Build Android APK & AAB
     steps:
       # 1. Checkout repo
       - name: Checkout repository
@@ -28,14 +28,51 @@ jobs:
       - name: Recreate Android Folder
         run: |
           rm -rf android
-          flutter create .   # recreate Android folder (V2 embedding)
+          flutter create .
           echo "Fresh Android folder created"
 
-      # 4. Get dependencies
+      # 4. Add INTERNET permission
+      - name: Add Internet Permission
+        run: |
+          if ! grep -q 'android.permission.INTERNET' android/app/src/main/AndroidManifest.xml; then
+            sed -i '/<manifest /a \  <uses-permission android:name="android.permission.INTERNET" />' android/app/src/main/AndroidManifest.xml
+            echo "Added INTERNET permission"
+          fi
+
+      # 5. Copy google-services.json
+      - name: Copy google-services.json
+        run: |
+          if [ -f firebase/google-services.json ]; then
+            cp -f firebase/google-services.json android/app/
+            echo "google-services.json copied to android/app/"
+          else
+            echo "Warning: google-services.json not found!"
+          fi
+
+      # 6. Ensure Firebase plugin in build.gradle
+      - name: Setup Firebase in build.gradle
+        run: |
+          # Add classpath in android/build.gradle if not exists
+          if ! grep -q "com.google.gms:google-services" android/build.gradle; then
+            sed -i "/dependencies {/a \        classpath 'com.google.gms:google-services:4.4.0'" android/build.gradle
+            echo "Added Google Services classpath in build.gradle"
+          else
+            echo "Google Services classpath already exists"
+          fi
+
+          # Add apply plugin in android/app/build.gradle if not exists
+          if ! grep -q "com.google.gms.google-services" android/app/build.gradle; then
+            echo "apply plugin: 'com.google.gms.google-services'" >> android/app/build.gradle
+            echo "Applied Google Services plugin in app/build.gradle"
+          else
+            echo "Google Services plugin already applied"
+          fi
+
+      # 7. Get dependencies
       - name: Flutter Pub Get
         run: flutter pub get
 
-      # 5. Replace logo in mipmap folders
+      # 8. Replace launcher icon
       - name: Replace Flutter Logo in Android
         run: |
           LOGO="assets/logo.png"
@@ -44,17 +81,23 @@ jobs:
           done
           echo "Logo replaced in all mipmap folders"
 
-      # 6. Clean previous build
+      # 9. Clean previous build
       - name: Flutter Clean
         run: flutter clean
 
-      # 7. Build Android APK
-      - name: Build APK
+      # 10. Build APK
+      - name: Build Release APK
         run: flutter build apk --release --no-tree-shake-icons
 
-      # 8. Upload APK artifact
-      - name: Upload APK
+      # 11. Build AAB
+      - name: Build App Bundle (AAB)
+        run: flutter build appbundle --release --no-tree-shake-icons
+
+      # 12. Upload APK + AAB
+      - name: Upload Android Builds
         uses: actions/upload-artifact@v4
         with:
-          name: android-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          name: android-builds
+          path: |
+            build/app/outputs/flutter-apk/app-release.apk
+            build/app/outputs/bundle/release/app-release.aab
