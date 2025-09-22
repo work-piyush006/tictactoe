@@ -17,11 +17,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2. Setup Flutter (Dart >=3.3)
+      # 2. Setup Flutter (force 3.22.2 → Dart 3.4+)
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.19.6"
+          flutter-version: "3.22.2"  # ✅ Dart >=3.4 included
           channel: "stable"
           cache: true
 
@@ -56,7 +56,7 @@ jobs:
             echo "⚠️ firebase/google-services.json not found, skipping..."
           fi
 
-      # 7. Patch android/build.gradle (Google Services & Ads repo)
+      # 7. Patch android/build.gradle (Google Services)
       - name: Patch android/build.gradle
         run: |
           FILE="android/build.gradle"
@@ -67,7 +67,7 @@ jobs:
             sed -i '/repositories {/a\        google()' $FILE
           fi
 
-      # 8. Patch android/app/build.gradle (apply plugin + ads config)
+      # 8. Patch android/app/build.gradle (apply plugin + ads dependency)
       - name: Patch android/app/build.gradle
         run: |
           FILE="android/app/build.gradle"
