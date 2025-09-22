@@ -13,18 +13,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout code
+      # 1️⃣ Checkout repo
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2️⃣ Setup Flutter
+      # 2️⃣ Setup Flutter (latest stable ≥ 3.13)
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.13.5'
+          flutter-version: '3.13.x'   # ✅ ensures Dart >=3.3
           cache: true
 
-      # 3️⃣ Cache Pub Packages
+      # 3️⃣ Cache pub packages
       - name: Cache Pub Packages
         uses: actions/cache@v3
         with:
@@ -32,11 +32,11 @@ jobs:
           key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.yaml') }}
           restore-keys: ${{ runner.os }}-pub-
 
-      # 4️⃣ Flutter pub get
-      - name: Flutter pub get
+      # 4️⃣ Get dependencies
+      - name: Flutter Pub Get
         run: flutter pub get
 
-      # 5️⃣ Ensure Android folder exists
+      # 5️⃣ Ensure Android folder
       - name: Ensure Android folder
         run: |
           if [ ! -d "android" ]; then
@@ -49,12 +49,11 @@ jobs:
           mkdir -p android/app
           cp firebase/google-services.json android/app/google-services.json
 
-      # 7️⃣ Add INTERNET permission automatically
+      # 7️⃣ Add Internet Permission
       - name: Add Internet Permission
         run: |
           manifest="android/app/src/main/AndroidManifest.xml"
           if ! grep -q 'android.permission.INTERNET' "$manifest"; then
-            sed -i '/<uses-permission android:name="android.permission.INTERNET" \/>/d' $manifest
             sed -i '/<manifest /a \    <uses-permission android:name="android.permission.INTERNET" />' $manifest
           fi
 
@@ -68,22 +67,22 @@ jobs:
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: ${{ runner.os }}-gradle-
 
-      # 9️⃣ Build APK (Release)
-      - name: Build APK
+      # 9️⃣ Build APK
+      - name: Build APK (Release)
         run: flutter build apk --release
 
-      # 🔟 Build AAB (Release)
-      - name: Build AAB
+      # 🔟 Build AAB
+      - name: Build AAB (Release)
         run: flutter build appbundle --release
 
-      # 1️⃣1️⃣ Upload APK artifact (v4)
+      # 1️⃣1️⃣ Upload APK
       - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: app-release-apk
           path: build/app/outputs/flutter-apk/app-release.apk
 
-      # 1️⃣2️⃣ Upload AAB artifact (v4)
+      # 1️⃣2️⃣ Upload AAB
       - name: Upload AAB Artifact
         uses: actions/upload-artifact@v4
         with:
