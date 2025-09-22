@@ -17,7 +17,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2. Setup Flutter (3.22.2 → Dart 3.4+)
+      # 2. Setup Flutter
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -38,7 +38,21 @@ jobs:
             flutter create --platforms=android .
           fi
 
-      # 5. Add INTERNET permission if missing
+      # 5. Wait until AndroidManifest exists
+      - name: Wait for AndroidManifest
+        run: |
+          COUNT=0
+          while [ ! -f "android/app/src/main/AndroidManifest.xml" ]; do
+            sleep 1
+            COUNT=$((COUNT+1))
+            if [ $COUNT -gt 20 ]; then
+              echo "❌ AndroidManifest.xml not found after 20s"
+              exit 1
+            fi
+          done
+          echo "✅ AndroidManifest.xml found"
+
+      # 6. Add INTERNET permission if missing
       - name: Add Internet permission
         run: |
           MANIFEST="android/app/src/main/AndroidManifest.xml"
@@ -46,7 +60,7 @@ jobs:
             sed -i '/<application/i\    <uses-permission android:name="android.permission.INTERNET"/>' $MANIFEST
           fi
 
-      # 6. Copy Firebase google-services.json
+      # 7. Copy Firebase google-services.json
       - name: Copy Firebase config
         run: |
           if [ -f "firebase/google-services.json" ]; then
@@ -57,39 +71,43 @@ jobs:
             echo "⚠️ firebase/google-services.json not found, skipping..."
           fi
 
-      # 7. Patch android/build.gradle (Top-level)
+      # 8. Patch android/build.gradle
       - name: Patch android/build.gradle
         run: |
           FILE="android/build.gradle"
-          # Add Google repo if missing
-          if ! grep -q "google()" $FILE; then
-            sed -i '/repositories {/a\        google()' $FILE
-          fi
-          # Add Google Services classpath if missing
-          if ! grep -q "com.google.gms:google-services" $FILE; then
-            sed -i '/dependencies {/a\        classpath "com.google.gms:google-services:4.4.2"' $FILE
+          if [ -f "$FILE" ]; then
+            if ! grep -q "com.google.gms:google-services" $FILE; then
+              sed -i '/dependencies {/a\        classpath "com.google.gms:google-services:4.4.2"' $FILE
+            fi
+            if ! grep -q "google()" $FILE; then
+              sed -i '/repositories {/a\        google()' $FILE
+            fi
           fi
 
-      # 8. Patch android/app/build.gradle (App-level)
+      # 9. Patch android/app/build.gradle
       - name: Patch android/app/build.gradle
         run: |
           FILE="android/app/build.gradle"
-          # Remove previous apply plugin lines to avoid Gradle 7+ conflicts
-          sed -i '/apply plugin: "com.google.gms.google-services"/d' $FILE
-          # Add ads dependency if missing
-          if ! grep -q "com.google.android.gms:play-services-ads" $FILE; then
-            sed -i '/dependencies {/a\    implementation "com.google.android.gms:play-services-ads:23.1.0"' $FILE
+          if [ -f "$FILE" ]; then
+            # Ensure apply plugin at top
+            if ! grep -q "com.google.gms.google-services" $FILE; then
+              sed -i '1iapply plugin: "com.google.gms.google-services"' $FILE
+            fi
+            # Add ads dependency if missing
+            if ! grep -q "com.google.android.gms:play-services-ads" $FILE; then
+              sed -i '/dependencies {/a\    implementation "com.google.android.gms:play-services-ads:23.1.0"' $FILE
+            fi
           fi
 
-      # 9. Build APK
+      # 10. Build APK
       - name: Build APK
         run: flutter build apk --release
 
-      # 10. Build AAB
+      # 11. Build AAB
       - name: Build AAB
         run: flutter build appbundle --release
 
-      # 11. Upload APK & AAB artifacts
+      # 12. Upload APK & AAB artifacts
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
