@@ -12,7 +12,6 @@ jobs:
   build-android:
     runs-on: ubuntu-latest
     steps:
-
       - name: Checkout repository
         uses: actions/checkout@v3
 
@@ -20,7 +19,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           flutter-version: "3.22.2"
-          channel: "stable"
+          channel: stable
           cache: true
 
       - name: Install dependencies
@@ -37,9 +36,7 @@ jobs:
           while [ ! -f "android/app/src/main/AndroidManifest.xml" ]; do
             sleep 1
             COUNT=$((COUNT+1))
-            if [ $COUNT -gt 20 ]; then
-              exit 1
-            fi
+            if [ $COUNT -gt 20 ]; then exit 1; fi
           done
 
       - name: Add Internet permission
@@ -56,27 +53,24 @@ jobs:
 
       - name: Patch android/build.gradle
         run: |
-          cat << 'EOF' > android/build.gradle
-buildscript {
+          echo "buildscript {
     ext.kotlin_version = '1.9.10'
     repositories {
         google()
         mavenCentral()
     }
     dependencies {
-        classpath "com.android.tools.build:gradle:8.1.0"
-        classpath "com.google.gms:google-services:4.4.2"
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+        classpath 'com.android.tools.build:gradle:8.1.0'
+        classpath 'com.google.gms:google-services:4.4.2'
+        classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version'
     }
 }
-
 allprojects {
     repositories {
         google()
         mavenCentral()
     }
-}
-EOF
+}" > android/build.gradle
 
       - name: Patch android/app/build.gradle for Ads & Google Services
         run: |
