@@ -29,13 +29,19 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      # 4. Ensure android folder exists
-      - name: Create Android folder if missing
-        run: |
-          if [ ! -d "android/app" ]; then
-            echo "⚡ Android folder missing → generating only android platform..."
-            flutter create --platforms=android .
-          fi
+      # 4. Force recreate Android folder
+- name: Force recreate Android folder
+  run: |
+    echo "🛠 Removing existing android folder (if any)..."
+    rm -rf android
+    echo "⚡ Generating fresh Android platform..."
+    flutter create --platforms=android .
+    if [ ! -d "android/app" ]; then
+      echo "❌ Failed to create android folder!"
+      exit 1
+    else
+      echo "✅ Android folder successfully created."
+    fi
 
       # 5. Add INTERNET permission
       - name: Add Internet permission
