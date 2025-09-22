@@ -1,5 +1,5 @@
 name: tic_tac_toe
-description: A fun and interactive Tic Tac Toe game with ads and Firebase analytics.
+description: A fun and interactive Tic Tac Toe game.
 publish_to: 'none'
 
 version: 1.0.0+1
@@ -18,11 +18,12 @@ dependencies:
   confetti: ^0.7.0
   connectivity_plus: ^4.0.2
 
-  # Google services
+  # Ads + Firebase (compatible with Dart 3.1.x)
   google_mobile_ads: ^4.0.0
-  firebase_core: ^2.27.0
-  firebase_analytics: ^10.7.0   # optional but good for tracking AdMob stats
+  firebase_core: ^2.24.2
+  firebase_analytics: ^10.6.3
 
+  # UI icons
   cupertino_icons: ^1.0.5
 
 dev_dependencies:
