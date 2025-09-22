@@ -53,7 +53,8 @@ jobs:
 
       - name: Patch android/build.gradle
         run: |
-          echo "buildscript {
+          cat <<EOF > android/build.gradle
+buildscript {
     ext.kotlin_version = '1.9.10'
     repositories {
         google()
@@ -62,15 +63,17 @@ jobs:
     dependencies {
         classpath 'com.android.tools.build:gradle:8.1.0'
         classpath 'com.google.gms:google-services:4.4.2'
-        classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version'
+        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:\$kotlin_version"
     }
 }
+
 allprojects {
     repositories {
         google()
         mavenCentral()
     }
-}" > android/build.gradle
+}
+EOF
 
       - name: Patch android/app/build.gradle for Ads & Google Services
         run: |
