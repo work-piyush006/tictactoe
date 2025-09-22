@@ -24,11 +24,10 @@ jobs:
           flutter-version: '3.13.8'
           channel: stable
 
-      # 3. Recreate Android folder safely (V2 embedding)
+      # 3. Create Android folder safely (V2 embedding)
       - name: Recreate Android Folder
         run: |
-          rm -rf android
-          flutter create .
+          flutter create . --android-language kotlin --ios-language swift
           echo "Fresh Android folder created"
 
       # 4. Add INTERNET permission
@@ -44,37 +43,33 @@ jobs:
         run: |
           if [ -f firebase/google-services.json ]; then
             cp -f firebase/google-services.json android/app/
-            echo "google-services.json copied to android/app/"
+            echo "google-services.json copied"
           else
             echo "Warning: google-services.json not found!"
           fi
 
       # 6. Ensure Firebase plugin in build.gradle
-      - name: Setup Firebase in build.gradle
+      - name: Setup Firebase Gradle Plugin
         run: |
-          # Add classpath in android/build.gradle if not exists
+          # Add Google Services classpath
           if ! grep -q "com.google.gms:google-services" android/build.gradle; then
             sed -i "/dependencies {/a \        classpath 'com.google.gms:google-services:4.4.0'" android/build.gradle
-            echo "Added Google Services classpath in build.gradle"
-          else
-            echo "Google Services classpath already exists"
+            echo "Added Google Services classpath"
           fi
-
-          # Add apply plugin in android/app/build.gradle if not exists
+          # Apply plugin
           if ! grep -q "com.google.gms.google-services" android/app/build.gradle; then
             echo "apply plugin: 'com.google.gms.google-services'" >> android/app/build.gradle
-            echo "Applied Google Services plugin in app/build.gradle"
-          else
-            echo "Google Services plugin already applied"
+            echo "Applied Google Services plugin"
           fi
 
-      # 7. Update compileSdkVersion, targetSdkVersion & Kotlin
-      - name: Update SDK & Kotlin
+      # 7. Update SDK, Kotlin & Gradle plugin
+      - name: Update SDK, Kotlin & Gradle
         run: |
           sed -i 's/compileSdkVersion .*/compileSdkVersion 34/' android/app/build.gradle
           sed -i 's/targetSdkVersion .*/targetSdkVersion 34/' android/app/build.gradle
           sed -i 's/ext.kotlin_version = .*/ext.kotlin_version = "1.8.21"/' android/build.gradle
-          echo "Updated compileSdkVersion, targetSdkVersion, and Kotlin version"
+          sed -i 's/com.android.tools.build:gradle:.*/com.android.tools.build:gradle:8.2.0/' android/build.gradle
+          echo "Updated compileSdkVersion, targetSdkVersion, Kotlin, and Gradle Plugin"
 
       # 8. Get dependencies
       - name: Flutter Pub Get
