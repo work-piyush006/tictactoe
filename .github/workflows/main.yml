@@ -14,11 +14,11 @@ jobs:
     name: Build Android APK & AAB
     steps:
 
-      # 1️⃣ Checkout the repository
+      # 1️⃣ Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2️⃣ Setup Flutter (3.22.2 stable)
+      # 2️⃣ Setup Flutter
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -27,24 +27,24 @@ jobs:
           cache: true
 
       # 3️⃣ Install dependencies
-      - name: Install Flutter dependencies
+      - name: Install dependencies
         run: flutter pub get
 
-      # 4️⃣ Remove existing Android folder & generate fresh Android project
+      # 4️⃣ Remove existing android folder and generate fresh Android project
       - name: Generate fresh Android platform
         run: |
           echo "🛠 Removing existing android folder..."
           rm -rf android
           flutter create --platforms=android .
 
-      # 5️⃣ Update compileSdkVersion, targetSdkVersion & Kotlin version
+      # 5️⃣ Set compileSdkVersion, targetSdkVersion & Kotlin version
       - name: Set SDK & Kotlin versions
         run: |
           sed -i 's/compileSdkVersion .*/compileSdkVersion 35/' android/app/build.gradle
           sed -i 's/targetSdkVersion .*/targetSdkVersion 35/' android/app/build.gradle
           sed -i "s/ext.kotlin_version = .*/ext.kotlin_version = '1.9.10'/" android/build.gradle
 
-      # 6️⃣ Wait until AndroidManifest.xml exists
+      # 6️⃣ Wait for AndroidManifest.xml
       - name: Wait for AndroidManifest.xml
         run: |
           COUNT=0
@@ -66,17 +66,18 @@ jobs:
             sed -i '/<application/i\    <uses-permission android:name="android.permission.INTERNET"/>' $MANIFEST
           fi
 
-      # 8️⃣ Copy Firebase google-services.json if exists
+      # 8️⃣ Copy Firebase google-services.json
       - name: Copy Firebase config
         run: |
           if [ -f "firebase/google-services.json" ]; then
+            mkdir -p android/app
             cp firebase/google-services.json android/app/google-services.json
             echo "✅ google-services.json copied"
           else
             echo "⚠️ firebase/google-services.json not found, skipping..."
           fi
 
-      # 9️⃣ Patch android/build.gradle for Google Services
+      # 9️⃣ Patch android/build.gradle (Google Services)
       - name: Patch android/build.gradle
         run: |
           FILE="android/build.gradle"
@@ -87,14 +88,14 @@ jobs:
             sed -i '/repositories {/a\        google()' $FILE
           fi
 
-      # 🔟 Patch android/app/build.gradle for Ads
-      - name: Patch android/app/build.gradle (Ads)
+      # 🔟 Patch android/app/build.gradle (ads)
+      - name: Patch android/app/build.gradle (ads)
         run: |
           FILE="android/app/build.gradle"
           if ! grep -q "com.google.android.gms:play-services-ads" $FILE; then
             sed -i '/dependencies {/a\    implementation "com.google.android.gms:play-services-ads:23.4.0"' $FILE
           fi
-          echo "✅ Patched android/app/build.gradle for Ads"
+          echo "✅ android/app/build.gradle patched for Ads"
 
       # 1️⃣1️⃣ Build APK
       - name: Build APK
