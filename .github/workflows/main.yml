@@ -17,11 +17,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2. Setup Flutter
+      # 2. Setup Flutter (Dart 3.6+)
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.16.2'
+          flutter-version: '3.16.0'
           channel: stable
 
       # 3. Recreate Android folder safely (V2 embedding)
@@ -55,15 +55,10 @@ jobs:
           if ! grep -q "com.google.gms:google-services" android/build.gradle; then
             sed -i "/dependencies {/a \        classpath 'com.google.gms:google-services:4.4.0'" android/build.gradle
             echo "Added Google Services classpath in build.gradle"
-          else
-            echo "Google Services classpath already exists"
           fi
-
           if ! grep -q "com.google.gms.google-services" android/app/build.gradle; then
             echo "apply plugin: 'com.google.gms.google-services'" >> android/app/build.gradle
             echo "Applied Google Services plugin in app/build.gradle"
-          else
-            echo "Google Services plugin already applied"
           fi
 
       # 7. Update compileSdkVersion, targetSdkVersion & Kotlin
