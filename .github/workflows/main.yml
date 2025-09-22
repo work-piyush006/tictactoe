@@ -51,6 +51,7 @@ jobs:
           if [ -f "firebase/google-services.json" ]; then
             mkdir -p android/app
             cp firebase/google-services.json android/app/google-services.json
+            fi
 
       - name: Patch android/build.gradle
         run: |
