@@ -238,19 +238,19 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     // Load Banner (Test Ad)
     bannerAd = BannerAd(
-      adUnitId: 'ca-app-pub-3940256099942544/6300978111'// Banner test ID,
-      request: AdRequest(),
-      size: AdSize.banner,
-      listener: BannerAdListener(
-        onAdLoaded: (_) {
-          if (mounted) setState(() => isBannerAdReady = true);
-        },
-        onAdFailedToLoad: (ad, error) {
-          ad.dispose();
-          print("Banner failed to load: $error");
-        },
-      ),
-    );
+  adUnitId: 'ca-app-pub-3940256099942544/6300978111', // Banner test ID
+  size: AdSize.banner,
+  request: AdRequest(),
+  listener: BannerAdListener(
+    onAdLoaded: (_) {
+      if (mounted) setState(() => isBannerAdReady = true);
+    },
+    onAdFailedToLoad: (ad, error) {
+      ad.dispose();
+      print("Banner failed to load: $error");
+    },
+  ),
+);
     bannerAd.load();
   }
 
@@ -389,7 +389,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
             bgmNotifier: widget.bgmNotifier,
             ));
             },
-            style: _menuButton(Colors
+            style: _menuButton(Colors.
             greenAccent.shade700),
             child: Text("▶ Play Game",
             style: TextStyle(fontSize: 22,
