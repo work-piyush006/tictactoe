@@ -33,8 +33,8 @@ jobs:
       - name: Create Android folder if missing
         run: |
           if [ ! -d "android/app" ]; then
-            echo "⚡ Android folder missing → generating..."
-            flutter create .
+            echo "⚡ Android folder missing → generating only android platform..."
+            flutter create --platforms=android .
           fi
 
       # 5. Add INTERNET permission
