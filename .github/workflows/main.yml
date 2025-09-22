@@ -73,6 +73,7 @@ jobs:
           mavenCentral()
           }
           }" > android/build.gradle
+          fi
 
       - name: Patch android/app/build.gradle for Ads & Google Services
         run: |
