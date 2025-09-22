@@ -11,34 +11,27 @@ on:
 jobs:
   build-android:
     runs-on: ubuntu-latest
-    name: Build Android APK
-
+    name: Build Android APK & AAB
     steps:
       # 1. Checkout repo
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2. Setup Flutter 3.16.3 (Dart 3.6+)
+      # 2. Setup Flutter
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.16.3'
+          flutter-version: '3.13.8'
           channel: stable
 
-      # 3. Confirm flutter & dart version
-      - name: Flutter & Dart Version
-        run: |
-          flutter --version
-          dart --version
-
-      # 4. Recreate Android folder safely
+      # 3. Recreate Android folder safely (V2 embedding)
       - name: Recreate Android Folder
         run: |
           rm -rf android
           flutter create .
           echo "Fresh Android folder created"
 
-      # 5. Add INTERNET permission
+      # 4. Add INTERNET permission
       - name: Add Internet Permission
         run: |
           if ! grep -q 'android.permission.INTERNET' android/app/src/main/AndroidManifest.xml; then
@@ -46,41 +39,47 @@ jobs:
             echo "Added INTERNET permission"
           fi
 
-      # 6. Copy google-services.json if exists
+      # 4.1 Force compileSdkVersion and targetSdkVersion 34
+      - name: Set compileSdkVersion and targetSdkVersion
+        run: |
+          sed -i 's/compileSdkVersion [0-9]\+/compileSdkVersion 34/' android/app/build.gradle
+          sed -i 's/targetSdkVersion [0-9]\+/targetSdkVersion 34/' android/app/build.gradle
+          echo "compileSdkVersion and targetSdkVersion set to 34"
+
+      # 5. Copy google-services.json
       - name: Copy google-services.json
         run: |
           if [ -f firebase/google-services.json ]; then
             cp -f firebase/google-services.json android/app/
-            echo "google-services.json copied"
+            echo "google-services.json copied to android/app/"
           else
             echo "Warning: google-services.json not found!"
           fi
 
-      # 7. Setup Firebase plugin
+      # 6. Ensure Firebase plugin in build.gradle
       - name: Setup Firebase in build.gradle
         run: |
+          # Add classpath in android/build.gradle if not exists
           if ! grep -q "com.google.gms:google-services" android/build.gradle; then
             sed -i "/dependencies {/a \        classpath 'com.google.gms:google-services:4.4.0'" android/build.gradle
-            echo "Added Google Services classpath"
+            echo "Added Google Services classpath in build.gradle"
+          else
+            echo "Google Services classpath already exists"
           fi
+
+          # Add apply plugin in android/app/build.gradle if not exists
           if ! grep -q "com.google.gms.google-services" android/app/build.gradle; then
             echo "apply plugin: 'com.google.gms.google-services'" >> android/app/build.gradle
             echo "Applied Google Services plugin in app/build.gradle"
+          else
+            echo "Google Services plugin already applied"
           fi
 
-      # 8. Update SDK versions & Kotlin
-      - name: Update SDK & Kotlin
-        run: |
-          sed -i 's/compileSdkVersion .*/compileSdkVersion 34/' android/app/build.gradle
-          sed -i 's/targetSdkVersion .*/targetSdkVersion 34/' android/app/build.gradle
-          sed -i 's/ext.kotlin_version = .*/ext.kotlin_version = "1.8.21"/' android/build.gradle
-          echo "Updated compileSdkVersion, targetSdkVersion, and Kotlin version"
-
-      # 9. Get dependencies
+      # 7. Get dependencies
       - name: Flutter Pub Get
         run: flutter pub get
 
-      # 10. Replace launcher icon
+      # 8. Replace launcher icon
       - name: Replace Flutter Logo in Android
         run: |
           LOGO="assets/logo.png"
@@ -89,17 +88,23 @@ jobs:
           done
           echo "Logo replaced in all mipmap folders"
 
-      # 11. Clean previous build
+      # 9. Clean previous build
       - name: Flutter Clean
         run: flutter clean
 
-      # 12. Build Release APK
+      # 10. Build Release APK
       - name: Build Release APK
         run: flutter build apk --release --no-tree-shake-icons
 
-      # 13. Upload APK
-      - name: Upload Android APK
+      # 11. Build App Bundle (AAB)
+      - name: Build App Bundle (AAB)
+        run: flutter build appbundle --release --no-tree-shake-icons
+
+      # 12. Upload APK + AAB
+      - name: Upload Android Builds
         uses: actions/upload-artifact@v4
         with:
           name: android-builds
-          path: build/app/outputs/flutter-apk/app-release.apk
+          path: |
+            build/app/outputs/flutter-apk/app-release.apk
+            build/app/outputs/bundle/release/app-release.aab
