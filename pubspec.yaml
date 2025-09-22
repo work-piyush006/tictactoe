@@ -5,7 +5,7 @@ publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: ">=2.19.0 <4.0.0"
+  sdk: ">=3.2.0 <4.0.0"
   flutter: ">=3.0.0 <4.0.0"
 
 dependencies:
@@ -13,15 +13,15 @@ dependencies:
     sdk: flutter
 
   # Game features
-  audioplayers: ^6.5.1
-  shared_preferences: ^2.2.0    # Downgraded for Dart 3.2
+  audioplayers: ^6.4.0        # Downgraded for Dart 3.2
+  shared_preferences: ^2.2.0  # Compatible with Dart 3.2
   confetti: ^0.8.0
-  connectivity_plus: ^6.0.3     # Compatible with Flutter 3.x
+  connectivity_plus: ^6.0.3   # Compatible with Dart 3.2
 
   # Ads + Firebase (compatible with Dart 3.2)
   google_mobile_ads: ^5.0.0
-  firebase_core: ^4.1.0
-  firebase_analytics: ^11.2.0
+  firebase_core: ^2.20.0
+  firebase_analytics: ^10.0.0
 
   # UI icons
   cupertino_icons: ^1.0.5
