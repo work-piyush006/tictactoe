@@ -1,36 +1,39 @@
 name: tic_tac_toe
-description: A fully featured Tic Tac Toe game with BGM, ads, confetti and Firebase.
-
-publish_to: "none"
+description: A premium Tic Tac Toe game with AI, multiplayer, animations, and ads.
 version: 1.0.0+1
 
 environment:
-  sdk: ">=3.2.0 <4.0.0"
-  flutter: ">=3.13.0"
+  sdk: ">=3.3.0 <4.0.0"
 
 dependencies:
   flutter:
     sdk: flutter
-
-  cupertino_icons: ^1.0.5
-  audioplayers: 5.0.1
-  shared_preferences: 2.2.0
-  connectivity_plus: 4.1.0
-  google_mobile_ads: 3.2.0
-  confetti: 0.6.0
-  firebase_core: 3.11.0
+  audioplayers: ^2.0.6
+  shared_preferences: ^2.1.1
+  connectivity_plus: ^4.0.1
+  google_mobile_ads: ^3.2.0
+  confetti: ^0.7.0
+  firebase_core: ^2.26.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^2.0.1
+  flutter_lints: ^2.0.0
 
 flutter:
   uses-material-design: true
 
   assets:
-    - assets/logo.png
+    - assets/
     - assets/bgm.mp3
     - assets/Tap.mp3
-    - assets/Celebration.mp3
     - assets/draw.mp3
+    - assets/Celebration.mp3
+    - assets/logo.png
+
+  fonts:
+    - family: Poppins
+      fonts:
+        - asset: fonts/Poppins-Regular.ttf
+        - asset: fonts/Poppins-Bold.ttf
+          weight: 700
