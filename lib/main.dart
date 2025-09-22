@@ -29,6 +29,11 @@ class TicTacToeApp extends StatelessWidget {
 }
 
 // ================= INTERNET CHECK =================
+class InternetCheckScreen extends StatefulWidget {
+  @override
+  _InternetCheckScreenState createState() => _InternetCheckScreenState();
+}
+
 class _InternetCheckScreenState extends State<InternetCheckScreen> {
   @override
   void initState() {
