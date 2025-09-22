@@ -6,19 +6,19 @@ version: 1.0.0+1
 
 environment:
   sdk: ">=3.2.0 <4.0.0"
-  flutter: ">=3.0.0 <4.0.0"
+  flutter: ">=3.7.0 <4.0.0"
 
 dependencies:
   flutter:
     sdk: flutter
 
-  # Game features
-  audioplayers: ^6.4.0        # Downgraded for Dart 3.2
-  shared_preferences: ^2.2.0  # Compatible with Dart 3.2
+  # Game features (Dart 3.2 compatible)
+  audioplayers: ^5.1.0
+  shared_preferences: ^2.2.0
   confetti: ^0.8.0
-  connectivity_plus: ^6.0.3   # Compatible with Dart 3.2
+  connectivity_plus: ^6.0.3
 
-  # Ads + Firebase (compatible with Dart 3.2)
+  # Ads + Firebase (Dart 3.2 compatible)
   google_mobile_ads: ^5.0.0
   firebase_core: ^2.20.0
   firebase_analytics: ^10.0.0
