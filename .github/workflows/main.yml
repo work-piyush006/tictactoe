@@ -13,16 +13,16 @@ jobs:
     runs-on: ubuntu-latest
     name: Build Android APK
     steps:
-      # 1. Checkout repository
+      # 1. Checkout repo
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2. Setup Flutter (dev channel with Dart 3.6+)
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.17.0-0.1.pre' # dev channel pre-release with Dart 3.6+
-          channel: dev
+      # 2. Install Flutter Dev Channel (Dart 3.6+)
+      - name: Install Flutter Dev Channel
+        run: |
+          git clone https://github.com/flutter/flutter.git -b dev --depth 1 $HOME/flutter
+          echo "$HOME/flutter/bin" >> $GITHUB_PATH
+          flutter --version
 
       # 3. Recreate Android folder safely
       - name: Recreate Android Folder
@@ -31,7 +31,7 @@ jobs:
           flutter create .
           echo "Fresh Android folder created"
 
-      # 4. Add INTERNET permission if missing
+      # 4. Add INTERNET permission
       - name: Add Internet Permission
         run: |
           if ! grep -q 'android.permission.INTERNET' android/app/src/main/AndroidManifest.xml; then
