@@ -17,12 +17,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2. Setup Flutter 3.16.3 (Dart 3.6+)
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.16.3'
-          channel: stable
+      # 2. Install Flutter 3.16.x (Dart 3.6+)
+      - name: Install Flutter
+        run: |
+          rm -rf $HOME/flutter
+          git clone -b stable https://github.com/flutter/flutter.git $HOME/flutter
+          export PATH="$HOME/flutter/bin:$PATH"
+          flutter --version
+          dart --version
 
       # 3. Recreate Android folder safely
       - name: Recreate Android Folder
@@ -39,24 +41,26 @@ jobs:
             echo "Added INTERNET permission"
           fi
 
-      # 5. Copy google-services.json (if exists)
+      # 5. Copy google-services.json
       - name: Copy google-services.json
         run: |
           if [ -f firebase/google-services.json ]; then
             cp -f firebase/google-services.json android/app/
-            echo "google-services.json copied to android/app/"
+            echo "google-services.json copied"
           else
             echo "Warning: google-services.json not found!"
           fi
 
-      # 6. Setup Firebase plugin in build.gradle
-      - name: Setup Firebase
+      # 6. Setup Firebase plugin
+      - name: Setup Firebase in build.gradle
         run: |
           if ! grep -q "com.google.gms:google-services" android/build.gradle; then
             sed -i "/dependencies {/a \        classpath 'com.google.gms:google-services:4.4.0'" android/build.gradle
+            echo "Added Google Services classpath"
           fi
           if ! grep -q "com.google.gms.google-services" android/app/build.gradle; then
             echo "apply plugin: 'com.google.gms.google-services'" >> android/app/build.gradle
+            echo "Applied Google Services plugin"
           fi
 
       # 7. Update SDK versions & Kotlin
@@ -67,7 +71,7 @@ jobs:
           sed -i 's/ext.kotlin_version = .*/ext.kotlin_version = "1.8.21"/' android/build.gradle
           echo "Updated compileSdkVersion, targetSdkVersion, and Kotlin version"
 
-      # 8. Get Flutter dependencies
+      # 8. Get dependencies
       - name: Flutter Pub Get
         run: flutter pub get
 
