@@ -5,7 +5,8 @@ import 'package:audioplayers/audioplayers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
-
+import 'package:confetti/confetti.dart';
+import 'dart:math';
 // ================== MAIN =================
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -237,7 +238,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
 
     // Load Banner (Test Ad)
     bannerAd = BannerAd(
-      adUnitId: BannerAd.testAdUnitId,
+      adUnitId: 'ca-app-pub-3940256099942544/6300978111'// Banner test ID,
       request: AdRequest(),
       size: AdSize.banner,
       listener: BannerAdListener(
@@ -380,47 +381,55 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                 SizedBox(height: 30),
                 _bannerWidget(),
                 SizedBox(height: 30),
-
-                // Buttons
+                  // Buttons
                 ElevatedButton(
-                  onPressed: () {
-                    _playSfx("assets/Tap.mp3");
-                    _navigateTo(PlaceholderScreen("ModeSelectionScreen"));
-                  },
-                  style: _menuButton(Colors.greenAccent.shade700),
-                  child: Text("▶ Play Game",
-                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                ),
-                SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: () {
-                    _playSfx("assets/Tap.mp3");
-                    _navigateTo(PlaceholderScreen("TwoPlayerSymbolSelectionScreen"));
-                  },
-                  style: _menuButton(Colors.blueAccent.shade700),
-                  child: Text("👥 2 Player Game",
-                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                ),
-                SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: () {
-                    _playSfx("assets/Tap.mp3");
-                    _navigateTo(PlaceholderScreen("SettingsScreen"));
-                  },
-                  style: _menuButton(Colors.orangeAccent.shade700),
-                  child: Text("⚙ Settings",
-                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                ),
-                SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: () {
-                    _playSfx("assets/Tap.mp3");
-                    _navigateTo(PlaceholderScreen("AboutScreen"));
-                  },
-                  style: _menuButton(Colors.purpleAccent.shade700),
-                  child: Text("🏆 About",
-                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                ),
+                onPressed: () {_playSfx("assets/Tap.mp3");
+            _navigateTo(ModeSelectionScreen(
+            bgmPlayer: widget.bgmPlayer,
+            bgmNotifier: widget.bgmNotifier,
+            ));
+            },
+            style: _menuButton(Colors
+            greenAccent.shade700),
+            child: Text("▶ Play Game",
+            style: TextStyle(fontSize: 22,
+            fontWeight: FontWeight.bold)),
+            ),
+            SizedBox(height: 20),
+            ElevatedButton(
+            onPressed: () {
+            _playSfx("assets/Tap.mp3");_navigateTo(TwoPlayerSymbolSelectionScreen(
+      bgmPlayer: widget.bgmPlayer,
+      bgmNotifier: widget.bgmNotifier,
+    ));
+  },
+  style: _menuButton(Colors.blueAccent.shade700),
+  child: Text("👥 2 Player Game",
+      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+),
+SizedBox(height: 20),
+ElevatedButton(
+  onPressed: () {
+    _playSfx("assets/Tap.mp3");
+    _navigateTo(SettingsScreen(
+      bgmPlayer: widget.bgmPlayer,
+      bgmNotifier: widget.bgmNotifier,
+    ));
+  },
+  style: _menuButton(Colors.orangeAccent.shade700),
+  child: Text("⚙ Settings",
+      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+),
+SizedBox(height: 20),
+ElevatedButton(
+  onPressed: () {
+    _playSfx("assets/Tap.mp3");
+    _navigateTo(AboutScreen());
+  },
+  style: _menuButton(Colors.purpleAccent.shade700),
+  child: Text("🏆 About",
+      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+),
                 SizedBox(height: 40),
               ],
             ),
@@ -430,6 +439,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 }
+                
 
 // ================= PART 1: SETTINGS + ABOUT =================  
 
