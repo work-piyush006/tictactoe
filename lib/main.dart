@@ -1,21 +1,18 @@
 // ================= PART 1: IMPORTS & MAIN APP =================
 import 'dart:async';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:confetti/confetti.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
-import 'dart:math';
 
-void main() {
+// ================== MAIN =================
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  MobileAds.instance.initialize(); // AdMob initialization
+  await MobileAds.instance.initialize();
   runApp(TicTacToeApp());
 }
 
-// ================== MAIN APP ==================
 class TicTacToeApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -28,7 +25,7 @@ class TicTacToeApp extends StatelessWidget {
   }
 }
 
-// ================= INTERNET CHECK =================
+// ================== INTERNET CHECK =================
 class InternetCheckScreen extends StatefulWidget {
   @override
   _InternetCheckScreenState createState() => _InternetCheckScreenState();
@@ -38,27 +35,34 @@ class _InternetCheckScreenState extends State<InternetCheckScreen> {
   @override
   void initState() {
     super.initState();
-    checkInternet();
+    _checkInternet();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    // Simple placeholder while checking internet
-    return Scaffold(
-      body: Center(
-        child: CircularProgressIndicator(),
-      ),
-    );
-  }
-
-  Future<void> checkInternet() async {
+  Future<void> _checkInternet() async {
     var connectivityResult = await Connectivity().checkConnectivity();
+    if (!mounted) return;
+
     if (connectivityResult == ConnectivityResult.none) {
-      bool isChecking = false;
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => StatefulBuilder(
+      _showNoInternetDialog();
+    } else {
+      Future.delayed(Duration(milliseconds: 500), () {
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => SplashScreen()),
+          );
+        }
+      });
+    }
+  }
+
+  void _showNoInternetDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        bool isChecking = false;
+        return StatefulBuilder(
           builder: (context, setState) => AlertDialog(
             title: Text("No Internet"),
             content: Column(
@@ -73,8 +77,8 @@ class _InternetCheckScreenState extends State<InternetCheckScreen> {
               TextButton(
                 onPressed: () async {
                   setState(() => isChecking = true);
-                  await Future.delayed(Duration(milliseconds: 500));
                   var result = await Connectivity().checkConnectivity();
+                  if (!mounted) return;
                   if (result != ConnectivityResult.none) {
                     Navigator.of(context).pop();
                     Navigator.pushReplacement(
@@ -89,20 +93,20 @@ class _InternetCheckScreenState extends State<InternetCheckScreen> {
               ),
             ],
           ),
-        ),
-      );
-    } else {
-      Future.delayed(Duration(milliseconds: 500), () {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (_) => SplashScreen()),
         );
-      });
-    }
+      },
+    );
   }
-} 
 
-// ================== SPLASH SCREEN ==================
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Center(child: CircularProgressIndicator()),
+    );
+  }
+}
+
+// ================== SPLASH SCREEN =================
 class SplashScreen extends StatefulWidget {
   @override
   _SplashScreenState createState() => _SplashScreenState();
@@ -117,22 +121,19 @@ class _SplashScreenState extends State<SplashScreen>
   @override
   void initState() {
     super.initState();
-
     bgmPlayer = AudioPlayer();
     bgmPlayer.setReleaseMode(ReleaseMode.loop);
-    playBGM();
+    _playBGM();
 
     _controller = AnimationController(
       vsync: this,
       duration: Duration(seconds: 2),
     );
-
     _animation = Tween<double>(begin: 0.8, end: 1.2)
         .animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut))
       ..addListener(() {
-        setState(() {});
+        if (mounted) setState(() {});
       });
-
     _controller.repeat(reverse: true);
 
     Future.delayed(Duration(seconds: 3), () {
@@ -150,11 +151,11 @@ class _SplashScreenState extends State<SplashScreen>
     });
   }
 
-  void playBGM() async {
+  Future<void> _playBGM() async {
     try {
       await bgmPlayer.play(AssetSource('bgm.mp3'));
     } catch (e) {
-      print("Error playing BGM: $e");
+      print("BGM play error: $e");
     }
   }
 
@@ -201,7 +202,7 @@ class _SplashScreenState extends State<SplashScreen>
   }
 }
 
-// ================== HOME SCREEN ==================
+// ================== HOME SCREEN =================
 class HomeScreen extends StatefulWidget {
   final AudioPlayer bgmPlayer;
   final ValueNotifier<bool> bgmNotifier;
@@ -215,9 +216,8 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   int playerWins = 0, computerWins = 0, draws = 0;
   late VoidCallback _bgmListener;
-  final AudioPlayer sfxPlayer = AudioPlayer(); // For Tap/Celebration/Draw
+  final AudioPlayer sfxPlayer = AudioPlayer();
 
-  // ===== BANNER VARIABLES =====
   late BannerAd bannerAd;
   bool isBannerAdReady = false;
 
@@ -225,36 +225,24 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    loadScores();
+    _loadScores();
 
     _bgmListener = () {
       if (!mounted) return;
-      if (widget.bgmNotifier.value) {
-        widget.bgmPlayer.resume();
-      } else {
-        widget.bgmPlayer.pause();
-      }
+      widget.bgmNotifier.value
+          ? widget.bgmPlayer.resume()
+          : widget.bgmPlayer.pause();
     };
     widget.bgmNotifier.addListener(_bgmListener);
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (widget.bgmNotifier.value) {
-        widget.bgmPlayer.resume();
-      } else {
-        widget.bgmPlayer.pause();
-      }
-    });
-
-    // ===== Load Banner =====
+    // Load Banner (Test Ad)
     bannerAd = BannerAd(
-      adUnitId: "ca-app-pub-2139593035914184/7537213546", // Replace with real banner ID
+      adUnitId: BannerAd.testAdUnitId,
       request: AdRequest(),
       size: AdSize.banner,
       listener: BannerAdListener(
         onAdLoaded: (_) {
-          setState(() {
-            isBannerAdReady = true;
-          });
+          if (mounted) setState(() => isBannerAdReady = true);
         },
         onAdFailedToLoad: (ad, error) {
           ad.dispose();
@@ -279,16 +267,15 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     if (state == AppLifecycleState.paused) {
       await widget.bgmPlayer.pause();
     } else if (state == AppLifecycleState.resumed) {
-      if (widget.bgmNotifier.value) {
-        await widget.bgmPlayer.resume();
-      } else {
-        await widget.bgmPlayer.pause();
-      }
+      widget.bgmNotifier.value
+          ? await widget.bgmPlayer.resume()
+          : await widget.bgmPlayer.pause();
     }
   }
 
-  void loadScores() async {
+  Future<void> _loadScores() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
     setState(() {
       playerWins = prefs.getInt("playerWins") ?? 0;
       computerWins = prefs.getInt("computerWins") ?? 0;
@@ -296,20 +283,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     });
   }
 
-  void navigateTo(Widget screen) {
-    Navigator.push(context, MaterialPageRoute(builder: (_) => screen))
-        .then((_) => loadScores());
-  }
-
-  ButtonStyle menuButton(Color color) {
-    return ElevatedButton.styleFrom(
-      minimumSize: Size(double.infinity, 55),
-      backgroundColor: color,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    );
-  }
-
-  Future<void> playSfx(String assetPath) async {
+  Future<void> _playSfx(String assetPath) async {
     try {
       await sfxPlayer.stop();
       await sfxPlayer.play(AssetSource(assetPath));
@@ -318,7 +292,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     }
   }
 
-  Widget scoreCard(String name, int score) {
+  Widget _scoreCard(String name, int score) {
     return Column(
       children: [
         Text(name, style: TextStyle(color: Colors.white, fontSize: 16)),
@@ -330,7 +304,7 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
     );
   }
 
-  Widget bannerWidget() {
+  Widget _bannerWidget() {
     if (isBannerAdReady) {
       return Container(
         width: bannerAd.size.width.toDouble(),
@@ -341,14 +315,22 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
       return SizedBox(
         width: double.infinity,
         height: 60,
-        child: Center(
-          child: Text(
-            "Loading Ad...",
-            style: TextStyle(color: Colors.white, fontSize: 18),
-          ),
-        ),
+        child: Center(child: Text("Loading Ad...", style: TextStyle(color: Colors.white))),
       );
     }
+  }
+
+  ButtonStyle _menuButton(Color color) {
+    return ElevatedButton.styleFrom(
+      minimumSize: Size(double.infinity, 55),
+      backgroundColor: color,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    );
+  }
+
+  void _navigateTo(Widget screen) {
+    Navigator.push(context, MaterialPageRoute(builder: (_) => screen))
+        .then((_) => _loadScores());
   }
 
   @override
@@ -370,21 +352,17 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
-                // Logo & Title
                 Image.asset("assets/logo.png", width: 120, height: 120),
                 SizedBox(height: 20),
                 Text(
                   "Tic Tac Toe",
                   style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 36,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 3,
-                  ),
+                      color: Colors.white,
+                      fontSize: 36,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 3),
                 ),
                 SizedBox(height: 30),
-
-                // Scoreboard
                 Container(
                   padding: EdgeInsets.symmetric(vertical: 15, horizontal: 10),
                   decoration: BoxDecoration(
@@ -393,80 +371,55 @@ class _HomeScreenState extends State<HomeScreen> with WidgetsBindingObserver {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceAround,
                     children: [
-                      scoreCard("Player", playerWins),
-                      scoreCard("Computer", computerWins),
-                      scoreCard("Draws", draws),
+                      _scoreCard("Player", playerWins),
+                      _scoreCard("Computer", computerWins),
+                      _scoreCard("Draws", draws),
                     ],
                   ),
                 ),
                 SizedBox(height: 30),
-
-                // Banner Ad
-                bannerWidget(),
+                _bannerWidget(),
                 SizedBox(height: 30),
 
                 // Buttons
                 ElevatedButton(
                   onPressed: () {
-                    playSfx("sounds/Tap.mp3");
-                    navigateTo(
-                      ModeSelectionScreen(
-                        bgmPlayer: widget.bgmPlayer,
-                        bgmNotifier: widget.bgmNotifier,
-                      ),
-                    );
+                    _playSfx("assets/Tap.mp3");
+                    _navigateTo(PlaceholderScreen("ModeSelectionScreen"));
                   },
-                  style: menuButton(Colors.greenAccent.shade700),
-                  child: Text(
-                    "▶ Play Game",
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                  ),
+                  style: _menuButton(Colors.greenAccent.shade700),
+                  child: Text("▶ Play Game",
+                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
                 ),
                 SizedBox(height: 20),
                 ElevatedButton(
                   onPressed: () {
-                    playSfx("sounds/Tap.mp3");
-                    navigateTo(
-                      TwoPlayerSymbolSelectionScreen(
-                        bgmPlayer: widget.bgmPlayer,
-                        bgmNotifier: widget.bgmNotifier,
-                      ),
-                    );
+                    _playSfx("assets/Tap.mp3");
+                    _navigateTo(PlaceholderScreen("TwoPlayerSymbolSelectionScreen"));
                   },
-                  style: menuButton(Colors.blueAccent.shade700),
-                  child: Text(
-                    "👥 2 Player Game",
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                  ),
+                  style: _menuButton(Colors.blueAccent.shade700),
+                  child: Text("👥 2 Player Game",
+                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
                 ),
                 SizedBox(height: 20),
                 ElevatedButton(
                   onPressed: () {
-                    playSfx("sounds/Tap.mp3");
-                    navigateTo(
-                      SettingsScreen(
-                        bgmPlayer: widget.bgmPlayer,
-                        bgmNotifier: widget.bgmNotifier,
-                      ),
-                    );
+                    _playSfx("assets/Tap.mp3");
+                    _navigateTo(PlaceholderScreen("SettingsScreen"));
                   },
-                  style: menuButton(Colors.orangeAccent.shade700),
-                  child: Text(
-                    "⚙ Settings",
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                  ),
+                  style: _menuButton(Colors.orangeAccent.shade700),
+                  child: Text("⚙ Settings",
+                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
                 ),
                 SizedBox(height: 20),
                 ElevatedButton(
                   onPressed: () {
-                    playSfx("sounds/Tap.mp3");
-                    navigateTo(AboutScreen());
+                    _playSfx("assets/Tap.mp3");
+                    _navigateTo(PlaceholderScreen("AboutScreen"));
                   },
-                  style: menuButton(Colors.purpleAccent.shade700),
-                  child: Text(
-                    "🏆 About",
-                    style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-                  ),
+                  style: _menuButton(Colors.purpleAccent.shade700),
+                  child: Text("🏆 About",
+                      style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
                 ),
                 SizedBox(height: 40),
               ],
