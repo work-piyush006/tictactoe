@@ -71,14 +71,14 @@ jobs:
       # 8️⃣ Patch android/build.gradle (Kotlin + Google Services)
       - name: Patch android/build.gradle
         run: |
-cat <<'EOF' > android/build.gradle
-buildscript {
-    ext.kotlin_version = '1.9.10'
-    repositories {
+        cat <<'EOF' > android/build.gradle
+        buildscript {
+        ext.kotlin_version = '1.9.10'
+        repositories {
         google()
         mavenCentral()
-    }
-    dependencies {
+        }
+        dependencies {
         classpath "com.android.tools.build:gradle:8.1.0"
         classpath "com.google.gms:google-services:4.4.2"
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
