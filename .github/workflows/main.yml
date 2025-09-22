@@ -17,7 +17,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2. Setup Flutter (stable + Dart >=3.4)
+      # 2. Setup Flutter (3.22.2 stable → Dart 3.4+)
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -29,30 +29,19 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      # 4. Ensure android folder exists
-      - name: Generate Android folder if missing
+      # 4. Remove existing android folder & generate fresh
+      - name: Generate fresh Android platform
         run: |
-          if [ ! -d "android/app" ]; then
-            echo "⚡ Android folder missing → generating fresh Android platform..."
-            rm -rf android
-            flutter create --platforms=android .
+          echo "🛠 Removing existing android folder (if any)..."
+          rm -rf android
+          echo "⚡ Generating fresh Android platform..."
+          flutter create --platforms=android .
+          if [ ! -f "android/app/src/main/AndroidManifest.xml" ]; then
+            echo "❌ AndroidManifest.xml not found after flutter create"
+            exit 1
           fi
 
-      # 5. Wait for AndroidManifest.xml to exist (max 60s)
-      - name: Wait for AndroidManifest.xml
-        run: |
-          COUNT=0
-          while [ ! -f "android/app/src/main/AndroidManifest.xml" ]; do
-            sleep 2
-            COUNT=$((COUNT+1))
-            if [ $COUNT -gt 30 ]; then
-              echo "❌ AndroidManifest.xml not found after 60s"
-              exit 1
-            fi
-          done
-          echo "✅ AndroidManifest.xml found"
-
-      # 6. Add INTERNET permission
+      # 5. Add INTERNET permission
       - name: Add Internet permission
         run: |
           MANIFEST="android/app/src/main/AndroidManifest.xml"
@@ -60,18 +49,17 @@ jobs:
             sed -i '/<application/i\    <uses-permission android:name="android.permission.INTERNET"/>' $MANIFEST
           fi
 
-      # 7. Copy Firebase google-services.json
+      # 6. Copy Firebase google-services.json
       - name: Copy Firebase config
         run: |
           if [ -f "firebase/google-services.json" ]; then
-            mkdir -p android/app
             cp firebase/google-services.json android/app/google-services.json
             echo "✅ google-services.json copied"
           else
             echo "⚠️ firebase/google-services.json not found, skipping..."
           fi
 
-      # 8. Patch android/build.gradle
+      # 7. Patch android/build.gradle (Google Services)
       - name: Patch android/build.gradle
         run: |
           FILE="android/build.gradle"
@@ -82,7 +70,7 @@ jobs:
             sed -i '/repositories {/a\        google()' $FILE
           fi
 
-      # 9. Patch android/app/build.gradle
+      # 8. Patch android/app/build.gradle (apply plugin + ads)
       - name: Patch android/app/build.gradle
         run: |
           FILE="android/app/build.gradle"
@@ -90,20 +78,20 @@ jobs:
           if ! grep -q "com.google.gms.google-services" $FILE; then
             sed -i '1iapply plugin: "com.google.gms.google-services"' $FILE
           fi
-          # Add Ads dependency
+          # Add ads dependency if missing
           if ! grep -q "com.google.android.gms:play-services-ads" $FILE; then
             sed -i '/dependencies {/a\    implementation "com.google.android.gms:play-services-ads:23.1.0"' $FILE
           fi
 
-      # 10. Build APK
+      # 9. Build APK
       - name: Build APK
         run: flutter build apk --release
 
-      # 11. Build AAB
+      # 10. Build AAB
       - name: Build AAB
         run: flutter build appbundle --release
 
-      # 12. Upload APK & AAB artifacts
+      # 11. Upload APK & AAB artifacts
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
