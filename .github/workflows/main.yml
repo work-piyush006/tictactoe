@@ -17,11 +17,11 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2. Setup Flutter (latest stable with Dart 3.4+)
+      # 2. Setup Flutter (Dart 3.4+ compatible)
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.26.4"  # latest stable Flutter
+          flutter-version: "3.27.0"
           channel: "stable"
           cache: true
 
@@ -29,19 +29,19 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      # 4. Ensure Android folder exists
+      # 4. Ensure android folder exists
       - name: Create Android folder if missing
         run: |
           if [ ! -d "android/app" ]; then
             echo "⚡ Android folder missing → generating only android platform..."
-            flutter create --platforms=android --overwrite .
+            flutter create --platforms=android .
           fi
 
       # 5. Add INTERNET permission
       - name: Add Internet permission
         run: |
           MANIFEST="android/app/src/main/AndroidManifest.xml"
-          if ! grep -q 'android.permission.INTERNET' $MANIFEST; then
+          if [ -f "$MANIFEST" ] && ! grep -q 'android.permission.INTERNET' $MANIFEST; then
             sed -i '/<application/i\    <uses-permission android:name="android.permission.INTERNET"/>' $MANIFEST
           fi
 
@@ -60,22 +60,26 @@ jobs:
       - name: Patch android/build.gradle
         run: |
           FILE="android/build.gradle"
-          if ! grep -q "com.google.gms:google-services" $FILE; then
-            sed -i '/dependencies {/a\        classpath "com.google.gms:google-services:4.4.2"' $FILE
-          fi
-          if ! grep -q "google()" $FILE; then
-            sed -i '/repositories {/a\        google()' $FILE
+          if [ -f "$FILE" ]; then
+            if ! grep -q "com.google.gms:google-services" $FILE; then
+              sed -i '/dependencies {/a\        classpath "com.google.gms:google-services:4.4.2"' $FILE
+            fi
+            if ! grep -q "google()" $FILE; then
+              sed -i '/repositories {/a\        google()' $FILE
+            fi
           fi
 
       # 8. Patch android/app/build.gradle (apply plugin + ads dependency)
       - name: Patch android/app/build.gradle
         run: |
           FILE="android/app/build.gradle"
-          if ! grep -q "com.google.gms.google-services" $FILE; then
-            echo 'apply plugin: "com.google.gms.google-services"' >> $FILE
-          fi
-          if ! grep -q "com.google.android.gms:play-services-ads" $FILE; then
-            sed -i '/dependencies {/a\    implementation "com.google.android.gms:play-services-ads:23.1.0"' $FILE
+          if [ -f "$FILE" ]; then
+            if ! grep -q "com.google.gms.google-services" $FILE; then
+              echo 'apply plugin: "com.google.gms.google-services"' >> $FILE
+            fi
+            if ! grep -q "com.google.android.gms:play-services-ads" $FILE; then
+              sed -i '/dependencies {/a\    implementation "com.google.android.gms:play-services-ads:23.1.0"' $FILE
+            fi
           fi
 
       # 9. Build APK
