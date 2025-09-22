@@ -1,4 +1,4 @@
-name: Flutter Android CI
+name: Flutter Android CI/CD
 
 on:
   push:
@@ -11,100 +11,81 @@ on:
 jobs:
   build-android:
     runs-on: ubuntu-latest
-    name: Build Android APK & AAB
+
     steps:
-      # 1. Checkout repo
+      # 1️⃣ Checkout code
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2. Setup Flutter
+      # 2️⃣ Setup Flutter
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.17.7'
-          channel: stable
+          flutter-version: '3.13.5'
+          cache: true
 
-      # 3. Recreate Android folder safely (V2 embedding)
-      - name: Recreate Android Folder
-        run: |
-          rm -rf android
-          flutter create .
-          echo "Fresh Android folder created"
+      # 3️⃣ Cache Pub Packages
+      - name: Cache Pub Packages
+        uses: actions/cache@v3
+        with:
+          path: ~/.pub-cache
+          key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.yaml') }}
+          restore-keys: ${{ runner.os }}-pub-
 
-      # 4. Add INTERNET permission
-      - name: Add Internet Permission
-        run: |
-          if ! grep -q 'android.permission.INTERNET' android/app/src/main/AndroidManifest.xml; then
-            sed -i '/<manifest /a \  <uses-permission android:name="android.permission.INTERNET" />' android/app/src/main/AndroidManifest.xml
-            echo "Added INTERNET permission"
-          fi
-
-      # 4.1 Force compileSdkVersion and targetSdkVersion 34
-      - name: Set compileSdkVersion and targetSdkVersion
-        run: |
-          sed -i 's/compileSdkVersion [0-9]\+/compileSdkVersion 34/' android/app/build.gradle
-          sed -i 's/targetSdkVersion [0-9]\+/targetSdkVersion 34/' android/app/build.gradle
-          echo "compileSdkVersion and targetSdkVersion set to 34"
-
-      # 5. Copy google-services.json
-      - name: Copy google-services.json
-        run: |
-          if [ -f firebase/google-services.json ]; then
-            cp -f firebase/google-services.json android/app/
-            echo "google-services.json copied to android/app/"
-          else
-            echo "Warning: google-services.json not found!"
-          fi
-
-      # 6. Ensure Firebase plugin in build.gradle
-      - name: Setup Firebase in build.gradle
-        run: |
-          # Add classpath in android/build.gradle if not exists
-          if ! grep -q "com.google.gms:google-services" android/build.gradle; then
-            sed -i "/dependencies {/a \        classpath 'com.google.gms:google-services:4.4.0'" android/build.gradle
-            echo "Added Google Services classpath in build.gradle"
-          else
-            echo "Google Services classpath already exists"
-          fi
-
-          # Add apply plugin in android/app/build.gradle if not exists
-          if ! grep -q "com.google.gms.google-services" android/app/build.gradle; then
-            echo "apply plugin: 'com.google.gms.google-services'" >> android/app/build.gradle
-            echo "Applied Google Services plugin in app/build.gradle"
-          else
-            echo "Google Services plugin already applied"
-          fi
-
-      # 7. Get dependencies
-      - name: Flutter Pub Get
+      # 4️⃣ Flutter pub get
+      - name: Flutter pub get
         run: flutter pub get
 
-      # 8. Replace launcher icon
-      - name: Replace Flutter Logo in Android
+      # 5️⃣ Ensure Android folder exists
+      - name: Ensure Android folder
         run: |
-          LOGO="assets/logo.png"
-          for folder in android/app/src/main/res/mipmap-*; do
-            cp $LOGO $folder/ic_launcher.png
-          done
-          echo "Logo replaced in all mipmap folders"
+          if [ ! -d "android" ]; then
+            flutter create .
+          fi
 
-      # 9. Clean previous build
-      - name: Flutter Clean
-        run: flutter clean
+      # 6️⃣ Copy Firebase google-services.json
+      - name: Copy google-services.json
+        run: |
+          mkdir -p android/app
+          cp firebase/google-services.json android/app/google-services.json
 
-      # 10. Build Release APK
-      - name: Build Release APK
-        run: flutter build apk --release --no-tree-shake-icons
+      # 7️⃣ Add INTERNET permission automatically
+      - name: Add Internet Permission
+        run: |
+          manifest="android/app/src/main/AndroidManifest.xml"
+          if ! grep -q 'android.permission.INTERNET' "$manifest"; then
+            sed -i '/<uses-permission android:name="android.permission.INTERNET" \/>/d' $manifest
+            sed -i '/<manifest /a \    <uses-permission android:name="android.permission.INTERNET" />' $manifest
+          fi
 
-      # 11. Build App Bundle (AAB)
-      - name: Build App Bundle (AAB)
-        run: flutter build appbundle --release --no-tree-shake-icons
+      # 8️⃣ Cache Gradle
+      - name: Cache Gradle
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper/
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: ${{ runner.os }}-gradle-
 
-      # 12. Upload APK + AAB
-      - name: Upload Android Builds
+      # 9️⃣ Build APK (Release)
+      - name: Build APK
+        run: flutter build apk --release
+
+      # 🔟 Build AAB (Release)
+      - name: Build AAB
+        run: flutter build appbundle --release
+
+      # 1️⃣1️⃣ Upload APK artifact (v4)
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: android-builds
-          path: |
-            build/app/outputs/flutter-apk/app-release.apk
-            build/app/outputs/bundle/release/app-release.aab
+          name: app-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+
+      # 1️⃣2️⃣ Upload AAB artifact (v4)
+      - name: Upload AAB Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-aab
+          path: build/app/outputs/bundle/release/app-release.aab
