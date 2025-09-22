@@ -55,28 +55,20 @@ jobs:
             mkdir -p android/app
             cp firebase/google-services.json android/app/google-services.json
 
-      - name: Patch android/build.gradle
-        run: cat << 'EOF' > android/build.gradle
-buildscript {
-ext.kotlin_version = '1.9.10'
-repositories {
-google()
-mavenCentral()
-}
-dependencies {
-classpath "com.android.tools.build:gradle:8.1.0"
-classpath "com.google.gms:google-services:4.4.2"
-classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-}
-}
-
-allprojects {
-repositories {
-google()
-mavenCentral()
-}
-}
-EOF
+      - name: Patch android/build.gradle (Kotlin + Google Services)
+        run: |
+          echo "buildscript {\
+ext.kotlin_version = '1.9.10';\
+repositories { google(); mavenCentral(); };\
+dependencies {\
+classpath 'com.android.tools.build:gradle:8.1.0';\
+classpath 'com.google.gms:google-services:4.4.2';\
+classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version';\
+}\
+}\
+allprojects {\
+repositories { google(); mavenCentral(); }\
+}" > android/build.gradle
 
       - name: Patch android/app/build.gradle for Ads & Google Services
         run: |
