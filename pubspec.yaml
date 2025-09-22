@@ -13,10 +13,10 @@ dependencies:
     sdk: flutter
 
   # Game features
-  audioplayers: 6.3.0
+  audioplayers: 6.2.0
   shared_preferences: 2.4.0
   confetti: 0.8.0
-  connectivity_plus: 4.2.0
+  connectivity_plus: 6.1.5  # Dart 3.2 compatible
 
   # Ads + Firebase
   google_mobile_ads: 4.0.0
