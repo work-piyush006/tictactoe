@@ -61,15 +61,27 @@ jobs:
           fi
 
       # 8️⃣ Patch android/build.gradle for Kotlin + Google Services
-      - name: Patch android/build.gradle
+      - name: Patch android/build.gradle (Kotlin + Google Services)
         run: |
-          BUILD_FILE="android/build.gradle"
-          if ! grep -q "com.google.gms:google-services" "$BUILD_FILE"; then
-            sed -i "/repositories {/a \        classpath 'com.google.gms:google-services:4.4.2'" "$BUILD_FILE"
-          fi
-          if ! grep -q "kotlin-gradle-plugin" "$BUILD_FILE"; then
-            sed -i "/dependencies {/a \        classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.10'" "$BUILD_FILE"
-          fi
+          cat > android/build.gradle <<'EOF'
+          buildscript {
+          ext.kotlin_version = '1.9.10'
+          repositories {
+          google()
+          mavenCentral()}
+          dependencies {
+          classpath "com.android.tools.build:gradle:8.1.0"
+          classpath "com.google.gms:google-services:4.4.2"
+          classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+          }
+          }
+          allprojects {
+          repositories {
+          google()
+          mavenCentral()
+          }
+          }
+          EOF
 
       # 9️⃣ Patch android/app/build.gradle for Ads
       - name: Patch android/app/build.gradle for Ads & Google Services
