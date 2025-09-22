@@ -14,9 +14,9 @@ dependencies:
 
   # Game features
   audioplayers: 6.2.0
-  shared_preferences: 2.4.0
+  shared_preferences: 2.2.1  # Dart 3.2 compatible
   confetti: 0.8.0
-  connectivity_plus: 5.0.2  # Dart 3.2 + flutter_test compatible
+  connectivity_plus: 5.0.2  # Dart 3.2 compatible
 
   # Ads + Firebase
   google_mobile_ads: 4.0.0
