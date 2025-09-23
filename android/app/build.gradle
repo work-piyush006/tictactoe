@@ -1,63 +1,27 @@
 apply plugin: 'com.android.application'
+apply plugin: 'kotlin-android'
+apply plugin: 'com.google.gms.google-services'
 
 android {
     compileSdkVersion 35
 
     defaultConfig {
-        applicationId "com.example.yourapp"
+        applicationId "com.example.tictactoe"
         minSdkVersion 21
         targetSdkVersion 35
-        versionCode flutterVersionCode.toInteger()
-        versionName flutterVersionName
+        versionCode 1
+        versionName "1.0"
     }
 
     buildTypes {
         release {
-            signingConfig signingConfigs.release
-        }
-    }
-
-    flavorDimensions "default"
-    productFlavors {
-        create("free") {
-            dimension "default"
-        }
-        create("paid") {
-            dimension "default"
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
 }
 
 dependencies {
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
     implementation 'com.google.android.gms:play-services-ads:23.1.0'
-    implementation 'com.google.firebase:firebase-analytics:21.2.0'
-    implementation 'com.google.firebase:firebase-auth:21.0.1'
-    implementation 'com.google.firebase:firebase-core:21.0.0'
-    implementation 'com.google.firebase:firebase-messaging:23.1.0'
-    implementation 'com.google.firebase:firebase-database:20.0.5'
-    implementation 'com.google.firebase:firebase-firestore:24.0.0'
-    implementation 'com.google.firebase:firebase-storage:20.0.0'
-    implementation 'com.google.firebase:firebase-crashlytics:18.2.0'
-    implementation 'com.google.firebase:firebase-perf:20.0.0'
-    implementation 'com.google.firebase:firebase-remote-config:22.0.0'
-    implementation 'com.google.firebase:firebase-in-app-messaging:21.0.0'
-    implementation 'com.google.firebase:firebase-in-app-messaging-display:21.0.0'
-    implementation 'com.google.firebase:firebase-analytics-ktx:21.2.0'
-    implementation 'com.google.firebase:firebase-auth-ktx:21.0.1'
-    implementation 'com.google.firebase:firebase-core-ktx:21.0.0'
-    implementation 'com.google.firebase:firebase-messaging-ktx:23.1.0'
-    implementation 'com.google.firebase:firebase-database-ktx:20.0.5'
-    implementation 'com.google.firebase:firebase-firestore-ktx:24.0.0'
-    implementation 'com.google.firebase:firebase-storage-ktx:20.0.0'
-    implementation 'com.google.firebase:firebase-crashlytics-ktx:18.2.0'
-    implementation 'com.google.firebase:firebase-perf-ktx:20.0.0'
-    implementation 'com.google.firebase:firebase-remote-config-ktx:22.0.0'
-    implementation 'com.google.firebase:firebase-in-app-messaging-ktx:21.0.0'
-    implementation 'com.google.firebase:firebase-in-app-messaging-display-ktx:21.0.0'
-    implementation 'com.google.android.gms:play-services-ads-identifier:17.0.0'
-    implementation 'com.google.android.gms:play-services-ads-lite:17.0.0'
-    implementation 'com.google.android.gms:play-services-ads-identifier-ktx:17.0.0'
-    implementation 'com.google.android.gms:play-services-ads-lite-ktx:17.0.0'
-    implementation 'com.google.android.gms:play-services-ads-identifier-ktx:17.0.0'
-    implementation 'com.google.android.gms:play-services-ads-lite-ktx:17.0.0'
 }
