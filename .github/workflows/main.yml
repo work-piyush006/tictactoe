@@ -12,139 +12,133 @@ jobs:
   build-android:
     runs-on: ubuntu-latest
     steps:
+      # 1. Checkout
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      # 2. Setup Flutter
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.22.2"
-          channel: stable
-          cache: true
+          flutter-version: '3.24.3'
 
-      - name: Install dependencies
+      # 3. Create Android folder (if missing)
+      - name: Create missing android folder
+        run: flutter create .
+
+      # 4. Overwrite android/build.gradle
+      - name: Patch android/build.gradle
+        run: |
+          cat > android/build.gradle <<'EOF'
+          buildscript {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+              dependencies {
+                  classpath 'com.android.tools.build:gradle:8.3.2'
+                  classpath 'com.google.gms:google-services:4.4.2'
+                  classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.24"
+              }
+          }
+
+          allprojects {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+
+          rootProject.buildDir = "../build"
+
+          subprojects {
+              project.buildDir = "${rootProject.buildDir}/${project.name}"
+          }
+
+          subprojects {
+              project.evaluationDependsOn(":app")
+          }
+
+          tasks.register("clean", Delete) {
+              delete rootProject.buildDir
+          }
+          EOF
+
+      # 5. Overwrite android/app/build.gradle
+      - name: Patch android/app/build.gradle
+        run: |
+          cat > android/app/build.gradle <<'EOF'
+          plugins {
+              id "com.android.application"
+              id "kotlin-android"
+              id "com.google.gms.google-services"
+          }
+
+          android {
+              namespace "com.example.tictactoe"
+              compileSdkVersion 35
+
+              defaultConfig {
+                  applicationId "com.example.tictactoe"
+                  minSdkVersion 21
+                  targetSdkVersion 35
+                  versionCode 1
+                  versionName "1.0"
+                  multiDexEnabled true
+              }
+
+              buildTypes {
+                  release {
+                      signingConfig signingConfigs.debug
+                      minifyEnabled false
+                      shrinkResources false
+                  }
+              }
+
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+
+              kotlinOptions {
+                  jvmTarget = "17"
+              }
+          }
+
+          dependencies {
+              implementation "org.jetbrains.kotlin:kotlin-stdlib:1.9.24"
+              implementation "androidx.core:core-ktx:1.13.1"
+              implementation "androidx.appcompat:appcompat:1.7.0"
+              implementation "com.google.android.material:material:1.12.0"
+
+              // Ads
+              implementation "com.google.android.gms:play-services-ads:23.4.0"
+
+              // Firebase
+              implementation platform("com.google.firebase:firebase-bom:33.4.0")
+              implementation "com.google.firebase:firebase-analytics"
+          }
+          EOF
+
+      # 6. Copy google-services.json
+      - name: Copy google-services.json
+        run: cp firebase/google-services.json android/app/
+
+      # 7. Get dependencies
+      - name: Flutter pub get
         run: flutter pub get
 
-      - name: Generate fresh Android platform
-        run: |
-          rm -rf android
-          flutter create --platforms=android .
-
-      - name: Wait for AndroidManifest.xml
-        run: |
-          COUNT=0
-          while [ ! -f "android/app/src/main/AndroidManifest.xml" ]; do
-            sleep 1
-            COUNT=$((COUNT+1))
-            if [ $COUNT -gt 20 ]; then exit 1; fi
-          done
-
-      - name: Add Internet permission
-        run: |
-          MANIFEST="android/app/src/main/AndroidManifest.xml"
-          if ! grep -q 'android.permission.INTERNET' "$MANIFEST"; then
-            sed -i '/<application/i\    <uses-permission android:name="android.permission.INTERNET"/>' "$MANIFEST"
-          fi
-
-      - name: Copy Firebase config
-        run: |
-          if [ -f "firebase/google-services.json" ]; then
-            mkdir -p android/app
-            cp firebase/google-services.json android/app/google-services.json
-          fi
-
-      - name: Patch root build.gradle
-        run: |
-          cat <<'EOF' > android/build.gradle
-          buildscript {
-          ext.kotlin_version = '1.9.23'
-          repositories {
-          google()
-          mavenCentral()
-          }
-          dependencies {
-          classpath 'com.android.tools.build:gradle:8.3.2'
-          classpath 'com.google.gms:google-services:4.4.2'
-          classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-          }
-          }
-          allprojects {
-          repositories {
-          google()
-          mavenCentral()
-          }
-          }
-          EOF
-
-      - name: Patch gradle-wrapper.properties
-        run: |
-          mkdir -p android/gradle/wrapper
-          cat <<'EOF' > android/gradle/wrapper/gradle-wrapper.properties
-          distributionBase=GRADLE_USER_HOME
-          distributionPath=wrapper/dists
-          zipStoreBase=GRADLE_USER_HOME
-          zipStorePath=wrapper/dists
-          distributionUrl=https\://services.gradle.org/distributions/gradle-8.3-bin.zip
-          EOF
-
-      - name: Patch settings.gradle
-        run: |
-          cat <<'EOF' > android/settings.gradle
-          pluginManagement {
-          repositories {
-          google()
-          mavenCentral()
-          gradlePluginPortal()
-          }
-          }
-          rootProject.name = "tictactoe"
-          include ':app'
-          EOF
-
-      - name: Patch app/build.gradle
-        run: |
-          cat <<'EOF' > android/app/build.gradle
-          plugins {
-          id "com.android.application"
-          id "org.jetbrains.kotlin.android"
-          id "com.google.gms.google-services"
-          }
-          android {
-          namespace "com.example.tictactoe"
-          compileSdkVersion 35
-          defaultConfig {
-          applicationId "com.example.tictactoe"
-          minSdkVersion 21
-          targetSdkVersion 35
-          versionCode 1
-          versionName "1.0"
-          }
-
-          buildTypes {
-          release {
-            signingConfig signingConfigs.debug
-            minifyEnabled false
-            shrinkResources false
-           }
-          }
-          }
-          dependencies {
-          implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
-          implementation "com.google.android.gms:play-services-ads:23.4.0"
-          }
-          EOF
-
+      # 8. Build APK
       - name: Build APK
         run: flutter build apk --release
 
+      # 9. Build AAB
       - name: Build AAB
         run: flutter build appbundle --release
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+      # 10. Upload artifacts
+      - name: Upload APK & AAB
+        uses: actions/upload-artifact@v3
         with:
           name: build-artifacts
-          path: |
-            build/app/outputs/flutter-apk/*.apk
-            build/app/outputs/bundle/release/*.aab
-          retention-days: 7
+          path: build/app/outputs/
