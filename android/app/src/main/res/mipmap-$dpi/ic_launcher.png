@@ -1,0 +1,5 @@
+ICON_PATH="assets/logo.png"
+for dpi in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
+  mkdir -p android/app/src/main/res/mipmap-$dpi
+  cp $ICON_PATH android/app/src/main/res/mipmap-$dpi/ic_launcher.png
+done
