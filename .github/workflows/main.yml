@@ -28,34 +28,24 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      # 4. Setup Android SDK
+      # 4. Setup Android SDK (skip build-tools install to avoid broken pipe)
       - name: Setup Android SDK
         uses: android-actions/setup-android@v2
 
-      # 5. Install build-tools & platform 35+
-      - name: Install build-tools & platforms
-        run: |
-          yes | sdkmanager "platforms;android-35"
-          yes | sdkmanager "build-tools;35.0.3"
-
-      # 6. Generate Android folder if missing
-      - name: Ensure Android folder
+      # 5. Create android folder if not exists
+      - name: Create android platform
         run: |
           if [ ! -d "android" ]; then
             flutter create --platforms=android .
           fi
 
-      # 7. Wait for AndroidManifest.xml
-      - name: Wait for AndroidManifest.xml
+      # 6. Patch compileSdkVersion & targetSdkVersion
+      - name: Set compileSdkVersion and targetSdkVersion
         run: |
-          COUNT=0
-          while [ ! -f "android/app/src/main/AndroidManifest.xml" ]; do
-            sleep 1
-            COUNT=$((COUNT+1))
-            if [ $COUNT -gt 20 ]; then exit 1; fi
-          done
+          sed -i 's/compileSdkVersion .*/compileSdkVersion 35/' android/app/build.gradle
+          sed -i 's/targetSdkVersion .*/targetSdkVersion 35/' android/app/build.gradle
 
-      # 8. Add Internet permission
+      # 7. Add Internet permission if missing
       - name: Add Internet permission
         run: |
           MANIFEST="android/app/src/main/AndroidManifest.xml"
@@ -63,7 +53,7 @@ jobs:
             sed -i '/<application/i\    <uses-permission android:name="android.permission.INTERNET"/>' "$MANIFEST"
           fi
 
-      # 9. Copy Firebase config
+      # 8. Copy Firebase config if exists
       - name: Copy Firebase config
         run: |
           if [ -f "firebase/google-services.json" ]; then
@@ -71,12 +61,11 @@ jobs:
             cp firebase/google-services.json android/app/google-services.json
           fi
 
-      # 10. Patch android/build.gradle (Kotlin + Google Services)
+      # 9. Patch android/build.gradle (Kotlin + Google Services)
       - name: Patch android/build.gradle
         run: |
-          cat > android/build.gradle <<EOF
-          buildscript {
-            ext.kotlin_version = '1.8.22'
+          echo "buildscript {
+            ext.kotlin_version = '2.2.20'
             repositories {
               google()
               mavenCentral()
@@ -84,7 +73,7 @@ jobs:
             dependencies {
               classpath 'com.android.tools.build:gradle:8.1.0'
               classpath 'com.google.gms:google-services:4.4.2'
-              classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:\$kotlin_version"
+              classpath \"org.jetbrains.kotlin:kotlin-gradle-plugin:\$kotlin_version\"
             }
           }
           allprojects {
@@ -92,10 +81,9 @@ jobs:
               google()
               mavenCentral()
             }
-          }
-          EOF
+          }" > android/build.gradle
 
-      # 11. Patch android/app/build.gradle for Ads & Google Services
+      # 10. Patch android/app/build.gradle for Ads & Google Services
       - name: Patch android/app/build.gradle
         run: |
           FILE="android/app/build.gradle"
@@ -106,7 +94,7 @@ jobs:
             sed -i '/^dependencies {/a\    implementation "com.google.android.gms:play-services-ads:23.1.0"' "$FILE"
           fi
 
-      # 12. Replace default launcher icon
+      # 11. Replace default launcher icon
       - name: Replace launcher icon
         run: |
           ICON_PATH="assets/logo.png"
@@ -115,15 +103,15 @@ jobs:
             cp $ICON_PATH android/app/src/main/res/mipmap-$dpi/ic_launcher.png
           done
 
-      # 13. Build APK
+      # 12. Build APK
       - name: Build APK
         run: flutter build apk --release --no-tree-shake-icons
 
-      # 14. Build AAB
+      # 13. Build AAB
       - name: Build AAB
         run: flutter build appbundle --release --no-tree-shake-icons
 
-      # 15. Upload artifacts
+      # 14. Upload artifacts
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
