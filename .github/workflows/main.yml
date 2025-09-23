@@ -33,10 +33,15 @@ jobs:
         uses: android-actions/setup-android@v2
 
       # 5. Create android folder if not exists
-      - name: Create android platform
+      - name: Create android folder if missing
         run: |
           if [ ! -d "android" ]; then
-            flutter create --platforms=android .
+          echo "Android folder missing. Creating..."
+          flutter create --platforms=android --project-name tictactoe temp_android
+          mv temp_android/android .
+          rm -rf temp_android
+          else
+          echo "Android folder already exists, skipping creation."
           fi
 
       # 6. Patch compileSdkVersion & targetSdkVersion
