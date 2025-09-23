@@ -138,7 +138,7 @@ jobs:
 
       # 10. Upload artifacts
       - name: Upload APK & AAB
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: build-artifacts
           path: build/app/outputs/
