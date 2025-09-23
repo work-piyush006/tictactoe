@@ -94,10 +94,10 @@ jobs:
 
       - name: Replace default launcher icon
         run: |
-          ICON_PATH="assets/logo.png"
-          if [ -f "$ICON_PATH" ]; then
-            cp "$ICON_PATH" android/app/src/main/res/mipmap-*/ic_launcher.png
-          fi
+         ICON_PATH="assets/logo.png"
+         for DIR in android/app/src/main/res/mipmap-*/; do
+         cp "$ICON_PATH" "$DIR/ic_launcher.png"
+         done
 
       - name: Build APK
         run: flutter build apk --release
