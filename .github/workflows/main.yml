@@ -12,11 +12,9 @@ jobs:
   build-android:
     runs-on: ubuntu-latest
     steps:
-      # 1️⃣ Checkout repo
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2️⃣ Setup Flutter
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -24,17 +22,14 @@ jobs:
           channel: stable
           cache: true
 
-      # 3️⃣ Install dependencies
       - name: Install dependencies
         run: flutter pub get
 
-      # 4️⃣ Remove existing android folder & generate fresh Android project
       - name: Generate fresh Android platform
         run: |
           rm -rf android
           flutter create --platforms=android .
 
-      # 5️⃣ Wait for AndroidManifest.xml
       - name: Wait for AndroidManifest.xml
         run: |
           COUNT=0
@@ -44,15 +39,13 @@ jobs:
             if [ $COUNT -gt 20 ]; then exit 1; fi
           done
 
-      # 6️⃣ Add INTERNET permission safely
       - name: Add Internet permission
         run: |
           MANIFEST="android/app/src/main/AndroidManifest.xml"
           if ! grep -q 'android.permission.INTERNET' "$MANIFEST"; then
             sed -i '/<application/i\    <uses-permission android:name="android.permission.INTERNET"/>' "$MANIFEST"
-            fi
+          fi
 
-      # 7️⃣ Copy Firebase config
       - name: Copy Firebase config
         run: |
           if [ -f "firebase/google-services.json" ]; then
@@ -60,18 +53,18 @@ jobs:
             cp firebase/google-services.json android/app/google-services.json
           fi
 
-      # 8️⃣ Patch android/build.gradle for Kotlin + Google Services
-      - name: Patch android/build.gradle (Kotlin + Google Services)
+      - name: Patch root build.gradle
         run: |
-          cat > android/build.gradle <<'EOF'
+          cat <<'EOF' > android/build.gradle
           buildscript {
-          ext.kotlin_version = '1.9.10'
+          ext.kotlin_version = '1.9.23'
           repositories {
           google()
-          mavenCentral()}
+          mavenCentral()
+          }
           dependencies {
-          classpath "com.android.tools.build:gradle:8.1.0"
-          classpath "com.google.gms:google-services:4.4.2"
+          classpath 'com.android.tools.build:gradle:8.3.2'
+          classpath 'com.google.gms:google-services:4.4.2'
           classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
           }
           }
@@ -83,28 +76,70 @@ jobs:
           }
           EOF
 
-      # 9️⃣ Patch android/app/build.gradle for Ads
-      - name: Patch android/app/build.gradle for Ads & Google Services
+      - name: Patch gradle-wrapper.properties
         run: |
-          FILE="android/app/build.gradle"
-          # Add google services plugin into plugins block
-          if ! grep -q "com.google.gms.google-services" "$FILE"; then
-            sed -i '/^plugins {/a\    id "com.google.gms.google-services"' "$FILE"
-          fi
+          mkdir -p android/gradle/wrapper
+          cat <<'EOF' > android/gradle/wrapper/gradle-wrapper.properties
+          distributionBase=GRADLE_USER_HOME
+          distributionPath=wrapper/dists
+          zipStoreBase=GRADLE_USER_HOME
+          zipStorePath=wrapper/dists
+          distributionUrl=https\://services.gradle.org/distributions/gradle-8.3-bin.zip
+          EOF
 
-          # Add Ads dependency inside dependencies
-          if ! grep -q "com.google.android.gms:play-services-ads" "$FILE"; then
-            sed -i '/^dependencies {/a\    implementation "com.google.android.gms:play-services-ads:23.1.0"' "$FILE"
-          fi
-      # 🔟 Build APK
+      - name: Patch settings.gradle
+        run: |
+          cat <<'EOF' > android/settings.gradle
+          pluginManagement {
+          repositories {
+          google()
+          mavenCentral()
+          gradlePluginPortal()
+          }
+          }
+          rootProject.name = "tictactoe"
+          include ':app'
+          EOF
+
+      - name: Patch app/build.gradle
+        run: |
+          cat <<'EOF' > android/app/build.gradle
+          plugins {
+          id "com.android.application"
+          id "org.jetbrains.kotlin.android"
+          id "com.google.gms.google-services"
+          }
+          android {
+          namespace "com.example.tictactoe"
+          compileSdkVersion 35
+          defaultConfig {
+          applicationId "com.example.tictactoe"
+          minSdkVersion 21
+          targetSdkVersion 35
+          versionCode 1
+          versionName "1.0"
+          }
+
+          buildTypes {
+          release {
+            signingConfig signingConfigs.debug
+            minifyEnabled false
+            shrinkResources false
+           }
+          }
+          }
+          dependencies {
+          implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+          implementation "com.google.android.gms:play-services-ads:23.4.0"
+          }
+          EOF
+
       - name: Build APK
         run: flutter build apk --release
 
-      # 1️⃣1️⃣ Build AAB
       - name: Build AAB
         run: flutter build appbundle --release
 
-      # 1️⃣2️⃣ Upload APK & AAB artifacts
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
