@@ -12,71 +12,80 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1️⃣ Checkout repo
+      # 1️⃣ Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2️⃣ Setup Flutter
+      # 2️⃣ Setup Flutter 3.13+ (Dart 3.3+)
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.13.0' # Use your Flutter version
+          flutter-version: '3.13.0'
 
-      # 3️⃣ Install dependencies
+      # 3️⃣ Check Flutter & Dart version
+      - name: Check Flutter & Dart version
+        run: |
+          flutter --version
+          dart --version
+
+      # 4️⃣ Install dependencies
       - name: Install dependencies
         run: flutter pub get
 
-      # 4️⃣ Check for v1 embedding and migrate to v2 automatically
-      - name: Migrate Android v1 → v2 if needed
+      # 5️⃣ Migrate Android v1 → v2 embedding if needed
+      - name: Migrate Android v1 → v2
         run: |
-          MAIN_ACTIVITY="android/app/src/main/kotlin/com/example/tictactoe/MainActivity.kt"
-          JAVA_ACTIVITY="android/app/src/main/java/com/example/tictactoe/MainActivity.java"
+          # Kotlin & Java paths
+          KOTLIN_MAIN="android/app/src/main/kotlin/com/example/tictactoe/MainActivity.kt"
+          JAVA_MAIN="android/app/src/main/java/com/example/tictactoe/MainActivity.java"
           MANIFEST="android/app/src/main/AndroidManifest.xml"
 
-          if grep -q "io.flutter.app.FlutterActivity" "$MAIN_ACTIVITY" 2>/dev/null || grep -q "GeneratedPluginRegistrant.registerWith" "$MAIN_ACTIVITY" 2>/dev/null; then
-            echo "v1 embedding detected, migrating to v2 embedding..."
-            # Overwrite Kotlin MainActivity
-            cat > "$MAIN_ACTIVITY" <<EOF
-            package com.example.tictactoe
-            import io.flutter.embedding.android.FlutterActivity
+          # Kotlin MainActivity
+          if [ -f "$KOTLIN_MAIN" ]; then
+            if grep -q "io.flutter.app.FlutterActivity" "$KOTLIN_MAIN" || grep -q "GeneratedPluginRegistrant.registerWith" "$KOTLIN_MAIN"; then
+              echo "Migrating Kotlin MainActivity to v2 embedding..."
+              cat > "$KOTLIN_MAIN" <<EOF
+              package com.example.tictactoe
+              import io.flutter.embedding.android.FlutterActivity
+              class MainActivity: FlutterActivity() {
+               }
+               EOF
+            fi
+          fi
 
-            class MainActivity: FlutterActivity() {
-             }
-            EOF
-             fi
-
-          if [ -f "$JAVA_ACTIVITY" ]; then
-            if grep -q "io.flutter.app.FlutterActivity" "$JAVA_ACTIVITY"; then
-              echo "v1 embedding detected in Java MainActivity, migrating..."
-              cat > "$JAVA_ACTIVITY" <<EOF
+          # Java MainActivity
+          if [ -f "$JAVA_MAIN" ]; then
+            if grep -q "io.flutter.app.FlutterActivity" "$JAVA_MAIN"; then
+              echo "Migrating Java MainActivity to v2 embedding..."
+              cat > "$JAVA_MAIN" <<EOF
               package com.example.tictactoe;
               import io.flutter.embedding.android.FlutterActivity;
               public class MainActivity extends FlutterActivity {
-                }
-              EOF
-              fi
-              fi
+              }
+            EOF
+            fi
+          fi
 
-          # Ensure AndroidManifest.xml has proper activity reference
+          # Update AndroidManifest.xml to point to new MainActivity
           if [ -f "$MANIFEST" ]; then
             sed -i 's|android:name=".*MainActivity"|android:name=".MainActivity"|g' "$MANIFEST"
           fi
 
-      # 5️⃣ Clean build
+      # 6️⃣ Clean project
       - name: Clean project
         run: flutter clean
 
-      # 6️⃣ Build APK
+      # 7️⃣ Build APK
       - name: Build APK
         run: flutter build apk --release
 
-      # 7️⃣ Build AAB
+      # 8️⃣ Build AAB
       - name: Build AAB
         run: flutter build appbundle --release
 
-      # 8️⃣ Upload artifacts
+      # 9️⃣ Upload artifacts
       - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
           name: flutter-build
           path: |
