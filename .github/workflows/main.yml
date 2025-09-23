@@ -49,11 +49,10 @@ jobs:
           package com.example.tictactoe
 
           import io.flutter.embedding.android.FlutterActivity
-
-class MainActivity: FlutterActivity() {
-}
-EOF
-            fi
+          class MainActivity: FlutterActivity() {
+           }
+           EOF
+          fi
           fi
 
           # Java MainActivity migration
@@ -61,15 +60,14 @@ EOF
             if grep -q "io.flutter.app.FlutterActivity" "$JAVA_MAIN"; then
               echo "Migrating Java MainActivity to v2 embedding..."
               cat > "$JAVA_MAIN" <<EOF
-package com.example.tictactoe;
-
-import io.flutter.embedding.android.FlutterActivity;
-
-public class MainActivity extends FlutterActivity {
-}
-EOF
-            fi
-          fi
+              package com.example.tictactoe;
+              import io.flutter.embedding.android.FlutterActivity;
+              public class MainActivity extends FlutterActivity {
+              
+              }
+              EOF
+             fi
+           fi
 
           # Update AndroidManifest.xml to point to new MainActivity
           if [ -f "$MANIFEST" ]; then
