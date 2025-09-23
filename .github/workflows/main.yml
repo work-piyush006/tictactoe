@@ -39,13 +39,13 @@ jobs:
             if grep -q "io.flutter.app.FlutterActivity" "$KOTLIN_MAIN" || grep -q "GeneratedPluginRegistrant.registerWith" "$KOTLIN_MAIN"; then
               echo "Migrating Kotlin MainActivity to v2 embedding..."
               cat > "$KOTLIN_MAIN" <<EOF
-package com.example.tictactoe
+              package com.example.tictactoe
 
-import io.flutter.embedding.android.FlutterActivity
-
-class MainActivity: FlutterActivity() {
-}
-EOF
+          import io.flutter.embedding.android.FlutterActivity
+          class   MainActivity: FlutterActivity() {
+          
+          }
+          EOF
             fi
           fi
 
@@ -54,13 +54,12 @@ EOF
             if grep -q "io.flutter.app.FlutterActivity" "$JAVA_MAIN"; then
               echo "Migrating Java MainActivity to v2 embedding..."
               cat > "$JAVA_MAIN" <<EOF
-package com.example.tictactoe;
-
-import io.flutter.embedding.android.FlutterActivity;
-
-public class MainActivity extends FlutterActivity {
-}
-EOF
+              package com.example.tictactoe;
+              import io.flutter.embedding.android.FlutterActivity;
+              public class MainActivity extends FlutterActivity {
+              
+              }
+              EOF
             fi
           fi
 
