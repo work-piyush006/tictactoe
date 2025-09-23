@@ -12,9 +12,11 @@ jobs:
   build-android:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repo
+      # 1. Checkout repo
+      - name: Checkout repository
         uses: actions/checkout@v3
 
+      # 2. Setup Flutter
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -30,11 +32,11 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v2
 
-      # 5. Install compatible build-tools & platform
+      # 5. Install build-tools & platforms (SDK 35+)
       - name: Install build-tools & platforms
         run: |
-          yes | sdkmanager "platforms;android-34"
-          yes | sdkmanager "build-tools;34.0.0"
+          yes | sdkmanager "platforms;android-35"
+          yes | sdkmanager "build-tools;35.0.3"
 
       # 6. Generate fresh Android platform
       - name: Generate fresh Android platform
@@ -60,7 +62,7 @@ jobs:
             sed -i '/<application/i\    <uses-permission android:name="android.permission.INTERNET"/>' "$MANIFEST"
           fi
 
-      # 9. Copy Firebase config
+      # 9. Copy Firebase config if exists
       - name: Copy Firebase config
         run: |
           if [ -f "firebase/google-services.json" ]; then
@@ -71,8 +73,7 @@ jobs:
       # 10. Patch android/build.gradle
       - name: Patch android/build.gradle
         run: |
-          cat > android/build.gradle <<'EOF'
-          buildscript {
+          echo "buildscript {
             ext.kotlin_version = '2.2.20'
             repositories {
               google()
@@ -81,7 +82,7 @@ jobs:
             dependencies {
               classpath 'com.android.tools.build:gradle:8.1.0'
               classpath 'com.google.gms:google-services:4.4.2'
-              classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+              classpath \"org.jetbrains.kotlin:kotlin-gradle-plugin:\$kotlin_version\"
             }
           }
           allprojects {
@@ -89,8 +90,7 @@ jobs:
               google()
               mavenCentral()
             }
-          }
-          EOF
+          }" > android/build.gradle
 
       # 11. Patch android/app/build.gradle for Ads & Google Services
       - name: Patch android/app/build.gradle
@@ -103,7 +103,7 @@ jobs:
             sed -i '/^dependencies {/a\    implementation "com.google.android.gms:play-services-ads:23.1.0"' "$FILE"
           fi
 
-      # 12. Replace default launcher icon
+      # 12. Replace default launcher icon with assets/logo.png
       - name: Replace launcher icon
         run: |
           ICON_PATH="assets/logo.png"
