@@ -12,8 +12,8 @@ jobs:
   build-android:
     runs-on: ubuntu-latest
     steps:
-      # 1. Checkout repo
-      - name: Checkout repository
+      # 1. Checkout repository
+      - name: Checkout repo
         uses: actions/checkout@v3
 
       # 2. Setup Flutter
@@ -31,20 +31,18 @@ jobs:
       # 4. Setup Android SDK
       - name: Setup Android SDK
         uses: android-actions/setup-android@v2
+        with:
+          api-level: 35
+          build-tools: 35.0.3
 
-      # 5. Install build-tools & platforms (SDK 35+)
-      - name: Install build-tools & platforms
-        run: |
-          yes | sdkmanager "platforms;android-35"
-          yes | sdkmanager "build-tools;35.0.3"
-
-      # 6. Generate fresh Android platform
+      # 5. Generate Android platform if missing
       - name: Generate fresh Android platform
         run: |
-          rm -rf android
-          flutter create --platforms=android .
+          if [ ! -d "android" ]; then
+            flutter create --platforms=android .
+          fi
 
-      # 7. Wait for AndroidManifest.xml
+      # 6. Wait for AndroidManifest.xml
       - name: Wait for AndroidManifest.xml
         run: |
           COUNT=0
@@ -54,7 +52,7 @@ jobs:
             if [ $COUNT -gt 20 ]; then exit 1; fi
           done
 
-      # 8. Add Internet permission
+      # 7. Add Internet permission
       - name: Add Internet permission
         run: |
           MANIFEST="android/app/src/main/AndroidManifest.xml"
@@ -62,7 +60,7 @@ jobs:
             sed -i '/<application/i\    <uses-permission android:name="android.permission.INTERNET"/>' "$MANIFEST"
           fi
 
-      # 9. Copy Firebase config if exists
+      # 8. Copy Firebase config
       - name: Copy Firebase config
         run: |
           if [ -f "firebase/google-services.json" ]; then
@@ -70,11 +68,12 @@ jobs:
             cp firebase/google-services.json android/app/google-services.json
           fi
 
-      # 10. Patch android/build.gradle
+      # 9. Patch android/build.gradle for Kotlin + Google Services
       - name: Patch android/build.gradle
         run: |
-          echo "buildscript {
-            ext.kotlin_version = '2.2.20'
+          cat > android/build.gradle <<EOF
+          buildscript {
+            ext.kotlin_version = '1.9.0'
             repositories {
               google()
               mavenCentral()
@@ -82,7 +81,7 @@ jobs:
             dependencies {
               classpath 'com.android.tools.build:gradle:8.1.0'
               classpath 'com.google.gms:google-services:4.4.2'
-              classpath \"org.jetbrains.kotlin:kotlin-gradle-plugin:\$kotlin_version\"
+              classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:\$kotlin_version"
             }
           }
           allprojects {
@@ -90,9 +89,10 @@ jobs:
               google()
               mavenCentral()
             }
-          }" > android/build.gradle
+          }
+          EOF
 
-      # 11. Patch android/app/build.gradle for Ads & Google Services
+      # 10. Patch android/app/build.gradle for Ads & Google Services
       - name: Patch android/app/build.gradle
         run: |
           FILE="android/app/build.gradle"
@@ -102,8 +102,11 @@ jobs:
           if ! grep -q "com.google.android.gms:play-services-ads" "$FILE"; then
             sed -i '/^dependencies {/a\    implementation "com.google.android.gms:play-services-ads:23.1.0"' "$FILE"
           fi
+          # Set compileSdkVersion 35 & targetSdkVersion 35
+          sed -i 's/compileSdkVersion [0-9]\+/compileSdkVersion 35/' "$FILE"
+          sed -i 's/targetSdkVersion [0-9]\+/targetSdkVersion 35/' "$FILE"
 
-      # 12. Replace default launcher icon with assets/logo.png
+      # 11. Replace default launcher icon
       - name: Replace launcher icon
         run: |
           ICON_PATH="assets/logo.png"
@@ -112,15 +115,15 @@ jobs:
             cp $ICON_PATH android/app/src/main/res/mipmap-$dpi/ic_launcher.png
           done
 
-      # 13. Build APK
+      # 12. Build APK
       - name: Build APK
         run: flutter build apk --release --no-tree-shake-icons
 
-      # 14. Build AAB
+      # 13. Build AAB
       - name: Build AAB
         run: flutter build appbundle --release --no-tree-shake-icons
 
-      # 15. Upload artifacts
+      # 14. Upload artifacts
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
