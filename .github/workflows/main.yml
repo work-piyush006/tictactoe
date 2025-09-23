@@ -73,27 +73,26 @@ jobs:
           fi
 
           - name: Patch android/build.gradle
-  run: |
-    cat > android/build.gradle <<EOF
-    buildscript {
-    ext.kotlin_version = '2.2.20'
-    repositories {
-        google()
-        mavenCentral()
-    }
-    dependencies {
-        classpath 'com.android.tools.build:gradle:8.1.0'
-        classpath 'com.google.gms:google-services:4.4.2'
-        classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:\$kotlin_version"
-    }
-    }
-    allprojects {
-    repositories {
-        google()
-        mavenCentral()
-    }
-    }
-    EOF
+          run: |
+          echo "buildscript {
+          ext.kotlin_version = '2.2.20'
+          repositories {
+            google()
+            mavenCentral()
+             }
+            dependencies {
+            classpath 'com.android.tools.build:gradle:8.1.0'
+            classpath 'com.google.gms:google-services:4.4.2'
+            classpath \"org.jetbrains.kotlin:kotlin-gradle-plugin:\$kotlin_version\"
+             }
+            }
+           allprojects {
+           repositories {
+            google()
+            mavenCentral()
+            }
+          }" > android/build.gradle
+    
 
       # 11. Patch android/app/build.gradle for Ads & Google Services
       - name: Patch android/app/build.gradle
