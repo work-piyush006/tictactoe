@@ -12,7 +12,7 @@ jobs:
   build-android:
     runs-on: ubuntu-latest
     steps:
-      # 1. Checkout repository
+      # 1. Checkout repo
       - name: Checkout repository
         uses: actions/checkout@v3
 
@@ -24,29 +24,37 @@ jobs:
           channel: stable
           cache: true
 
-      # 3. Setup Android SDK
+      # 3. Install dependencies
+      - name: Install dependencies
+        run: flutter pub get
+
+      # 4. Setup Android SDK
       - name: Setup Android SDK
         uses: android-actions/setup-android@v2
 
-      # 4. Reinstall SDK 35 (fix corrupt SDK issue)
-      - name: Reinstall Android SDK 35
+      # 5. Install compatible build-tools & platform
+      - name: Install build-tools & platforms
         run: |
-          yes | sdkmanager --uninstall "platforms;android-35"
-          yes | sdkmanager "platforms;android-35"
-          yes | sdkmanager "build-tools;35.0.3"
+          yes | sdkmanager "platforms;android-34"
+          yes | sdkmanager "build-tools;34.0.0"
 
-      # 5. Install dependencies
-      - name: Install Flutter dependencies
-        run: flutter pub get
-
-      # 6. Generate fresh Android platform if missing
-      - name: Generate Android platform if missing
+      # 6. Generate fresh Android platform
+      - name: Generate fresh Android platform
         run: |
-          if [ ! -d "android" ]; then
-            flutter create --platforms=android .
-          fi
+          rm -rf android
+          flutter create --platforms=android .
 
-      # 7. Add Internet permission
+      # 7. Wait for AndroidManifest.xml
+      - name: Wait for AndroidManifest.xml
+        run: |
+          COUNT=0
+          while [ ! -f "android/app/src/main/AndroidManifest.xml" ]; do
+            sleep 1
+            COUNT=$((COUNT+1))
+            if [ $COUNT -gt 20 ]; then exit 1; fi
+          done
+
+      # 8. Add Internet permission
       - name: Add Internet permission
         run: |
           MANIFEST="android/app/src/main/AndroidManifest.xml"
@@ -54,7 +62,7 @@ jobs:
             sed -i '/<application/i\    <uses-permission android:name="android.permission.INTERNET"/>' "$MANIFEST"
           fi
 
-      # 8. Copy Firebase config
+      # 9. Copy Firebase config
       - name: Copy Firebase config
         run: |
           if [ -f "firebase/google-services.json" ]; then
@@ -62,31 +70,32 @@ jobs:
             cp firebase/google-services.json android/app/google-services.json
           fi
 
-      # 9. Patch android/build.gradle
+      # 10. Patch android/build.gradle (Kotlin + Google Services)
       - name: Patch android/build.gradle
         run: |
           cat > android/build.gradle <<EOF
-           buildscript {
-            ext.kotlin_version = '2.2.20'
-           repositories {
-           google()
-           mavenCentral()
-             }
-             dependencies {
-             classpath 'com.android.tools.build:gradle:8.1.0'
-             classpath 'com.google.gms:google-services:4.4.2'
-             classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:\$kotlin_version"
-              }
-               }
-             allprojects {
-             repositories {
-             google()
-             mavenCentral()
-              }
-             }
-             EOF
+          buildscript {
+          ext.kotlin_version = '2.2.20'
+          repositories {
+          google()
+          mavenCentral()
+           }
+          dependencies {
+          classpath 'com.android.tools.build:gradle:8.1.0'
+          classpath 'com.google.gms:google-services:4.4.2'
+          classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:\$kotlin_version"
+           }
+          }
 
-      # 10. Patch android/app/build.gradle for Ads & Google Services
+          allprojects {
+          repositories {
+          google()
+          mavenCentral()
+           }
+          }
+         EOF
+
+      # 11. Patch android/app/build.gradle for Ads & Google Services
       - name: Patch android/app/build.gradle
         run: |
           FILE="android/app/build.gradle"
@@ -97,24 +106,24 @@ jobs:
             sed -i '/^dependencies {/a\    implementation "com.google.android.gms:play-services-ads:23.1.0"' "$FILE"
           fi
 
-      # 11. Replace default launcher icon
+      # 12. Replace default launcher icon
       - name: Replace launcher icon
         run: |
           ICON_PATH="assets/logo.png"
-          for size in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
-            mkdir -p android/app/src/main/res/mipmap-$size
-            cp $ICON_PATH android/app/src/main/res/mipmap-$size/ic_launcher.png
+          for dpi in mdpi hdpi xhdpi xxhdpi xxxhdpi; do
+            mkdir -p android/app/src/main/res/mipmap-$dpi
+            cp $ICON_PATH android/app/src/main/res/mipmap-$dpi/ic_launcher.png
           done
 
-      # 12. Build APK (no tree-shake icons)
+      # 13. Build APK
       - name: Build APK
         run: flutter build apk --release --no-tree-shake-icons
 
-      # 13. Build AAB
+      # 14. Build AAB
       - name: Build AAB
         run: flutter build appbundle --release --no-tree-shake-icons
 
-      # 14. Upload artifacts
+      # 15. Upload artifacts
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
