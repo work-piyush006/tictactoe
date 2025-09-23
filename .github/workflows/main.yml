@@ -16,12 +16,12 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2️⃣ Setup Flutter 3.13+ (Dart 3.3+)
+      # 2️⃣ Setup Flutter stable channel 3.13.0 (Dart 3.3+)
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.15.0'
-          channel: "stable"
+          channel: stable
+          flutter-version: '3.13.0'
 
       # 3️⃣ Check Flutter & Dart version
       - name: Check Flutter & Dart version
@@ -36,35 +36,40 @@ jobs:
       # 5️⃣ Migrate Android v1 → v2 embedding if needed
       - name: Migrate Android v1 → v2
         run: |
+          # Paths for MainActivity and manifest
           KOTLIN_MAIN="android/app/src/main/kotlin/com/example/tictactoe/MainActivity.kt"
           JAVA_MAIN="android/app/src/main/java/com/example/tictactoe/MainActivity.java"
           MANIFEST="android/app/src/main/AndroidManifest.xml"
 
-          # Kotlin MainActivity
+          # Kotlin MainActivity migration
           if [ -f "$KOTLIN_MAIN" ]; then
             if grep -q "io.flutter.app.FlutterActivity" "$KOTLIN_MAIN" || grep -q "GeneratedPluginRegistrant.registerWith" "$KOTLIN_MAIN"; then
               echo "Migrating Kotlin MainActivity to v2 embedding..."
               cat > "$KOTLIN_MAIN" <<EOF
-              package com.example.tictactoe
-              import io.flutter.embedding.android.FlutterActivity
-              class MainActivity: FlutterActivity() {
-               }
-               EOF
-              fi
-              fi
- 
-          # Java MainActivity
+          package com.example.tictactoe
+
+          import io.flutter.embedding.android.FlutterActivity
+
+class MainActivity: FlutterActivity() {
+}
+EOF
+            fi
+          fi
+
+          # Java MainActivity migration
           if [ -f "$JAVA_MAIN" ]; then
             if grep -q "io.flutter.app.FlutterActivity" "$JAVA_MAIN"; then
               echo "Migrating Java MainActivity to v2 embedding..."
               cat > "$JAVA_MAIN" <<EOF
-              package com.example.tictactoe;
-              import io.flutter.embedding.android.FlutterActivity;
-              public class MainActivity extends FlutterActivity {
-              }
-              EOF
-              fi
-              fi
+package com.example.tictactoe;
+
+import io.flutter.embedding.android.FlutterActivity;
+
+public class MainActivity extends FlutterActivity {
+}
+EOF
+            fi
+          fi
 
           # Update AndroidManifest.xml to point to new MainActivity
           if [ -f "$MANIFEST" ]; then
@@ -83,7 +88,7 @@ jobs:
       - name: Build AAB
         run: flutter build appbundle --release
 
-      # 9️⃣ Upload artifacts
+      # 9️⃣ Upload build artifacts
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
