@@ -20,7 +20,7 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.3.0'
+          flutter-version: '3.13.0'
 
       # 3️⃣ Check Flutter & Dart version
       - name: Check Flutter & Dart version
@@ -35,7 +35,6 @@ jobs:
       # 5️⃣ Migrate Android v1 → v2 embedding if needed
       - name: Migrate Android v1 → v2
         run: |
-          # Kotlin & Java paths
           KOTLIN_MAIN="android/app/src/main/kotlin/com/example/tictactoe/MainActivity.kt"
           JAVA_MAIN="android/app/src/main/java/com/example/tictactoe/MainActivity.java"
           MANIFEST="android/app/src/main/AndroidManifest.xml"
@@ -47,9 +46,10 @@ jobs:
               cat > "$KOTLIN_MAIN" <<EOF
               package com.example.tictactoe
               import io.flutter.embedding.android.FlutterActivity
-              class MainActivity: FlutterActivity() {
-               }
-               EOF
+
+class MainActivity: FlutterActivity() {
+}
+EOF
             fi
           fi
 
@@ -58,11 +58,13 @@ jobs:
             if grep -q "io.flutter.app.FlutterActivity" "$JAVA_MAIN"; then
               echo "Migrating Java MainActivity to v2 embedding..."
               cat > "$JAVA_MAIN" <<EOF
-              package com.example.tictactoe;
-              import io.flutter.embedding.android.FlutterActivity;
-              public class MainActivity extends FlutterActivity {
-              }
-            EOF
+package com.example.tictactoe;
+
+import io.flutter.embedding.android.FlutterActivity;
+
+public class MainActivity extends FlutterActivity {
+}
+EOF
             fi
           fi
 
