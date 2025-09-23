@@ -102,8 +102,11 @@ jobs:
             cp "$ICON_PATH" "android/app/src/main/res/$DENSITY/ic_launcher.png"
           done
 
-      - name: Accept Android licenses
-        run: yes | sdkmanager --licenses
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v2
+        with:
+          api-level: 35
+          build-tools: 35.0.0
 
       - name: Install required SDK
         run: |
