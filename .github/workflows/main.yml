@@ -21,7 +21,7 @@ jobs:
         uses: flutter/flutter-action@v2
         with:
           channel: stable
-          flutter-version: latest
+          flutter-version: '3.20.5'
 
       # 3️⃣ Check Flutter & Dart version
       - name: Check Flutter & Dart version
