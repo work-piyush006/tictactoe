@@ -46,13 +46,12 @@ jobs:
               cat > "$KOTLIN_MAIN" <<EOF
               package com.example.tictactoe
               import io.flutter.embedding.android.FlutterActivity
-
-class MainActivity: FlutterActivity() {
-}
-EOF
-            fi
-          fi
-
+              class MainActivity: FlutterActivity() {
+               }
+               EOF
+              fi
+              fi
+ 
           # Java MainActivity
           if [ -f "$JAVA_MAIN" ]; then
             if grep -q "io.flutter.app.FlutterActivity" "$JAVA_MAIN"; then
