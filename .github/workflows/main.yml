@@ -13,9 +13,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
+      # 1. Checkout repo
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      # 2. Setup Flutter
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -23,14 +25,17 @@ jobs:
           channel: stable
           cache: true
 
+      # 3. Install dependencies
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Generate fresh Android platform
+      # 4. Generate Android platform (fresh)
+      - name: Generate Android platform
         run: |
           rm -rf android
           flutter create --platforms=android .
 
+      # 5. Wait for AndroidManifest.xml
       - name: Wait for AndroidManifest.xml
         run: |
           COUNT=0
@@ -40,84 +45,89 @@ jobs:
             if [ $COUNT -gt 20 ]; then exit 1; fi
           done
 
+      # 6. Add Internet permission
       - name: Add Internet permission
         run: |
           MANIFEST="android/app/src/main/AndroidManifest.xml"
           if ! grep -q 'android.permission.INTERNET' "$MANIFEST"; then
             sed -i '/<application/i\    <uses-permission android:name="android.permission.INTERNET"/>' "$MANIFEST"
-            fi
+          fi
 
+      # 7. Copy Firebase config (if exists)
       - name: Copy Firebase config
         run: |
           if [ -f "firebase/google-services.json" ]; then
             mkdir -p android/app
             cp firebase/google-services.json android/app/google-services.json
-            fi
+          fi
 
-      - name: Patch android/build.gradle (Kotlin + Google Services)
+      # 8. Patch android/build.gradle
+      - name: Patch android/build.gradle
         run: |
           cat > android/build.gradle <<EOF
           buildscript {
           ext.kotlin_version = '2.2.20'
           repositories {
-           google()
-           mavenCentral()
-           }
-           dependencies {
-           classpath 'com.android.tools.build:gradle:8.1.0'
-          classpath 'com.google.gms:google-services:4.4.2'
-          classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:\$kotlin_version"
-          }
-          }
-
-          allprojects {
-          repositories {
           google()
           mavenCentral()
           }
-          }
+          dependencies {
+          classpath "com.android.tools.build:gradle:8.1.0"
+          classpath "com.google.gms:google-services:4.4.2"
+          classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:\$kotlin_version"
+           }
+           }
+
+           allprojects {
+           repositories {
+           google()
+           mavenCentral()
+           }
+           }
           EOF
- 
-      - name: Patch android/app/build.gradle for Ads & Google Services
+
+      # 9. Patch android/app/build.gradle for Ads & Google Services
+      - name: Patch android/app/build.gradle
         run: |
           FILE="android/app/build.gradle"
-          # Add google services plugin into plugins block
+          # Add google services plugin
           if ! grep -q "com.google.gms.google-services" "$FILE"; then
             sed -i '/^plugins {/a\    id "com.google.gms.google-services"' "$FILE"
           fi
-
-          # Add Ads dependency inside dependencies
+          # Add Ads dependency
           if ! grep -q "com.google.android.gms:play-services-ads" "$FILE"; then
             sed -i '/^dependencies {/a\    implementation "com.google.android.gms:play-services-ads:23.1.0"' "$FILE"
           fi
+          # Ensure compileSdkVersion & buildToolsVersion
+          sed -i '/compileSdkVersion/c\        compileSdkVersion 35' "$FILE"
+          sed -i '/targetSdkVersion/c\        targetSdkVersion 35' "$FILE"
+          sed -i '/minSdkVersion/c\        minSdkVersion 21' "$FILE"
+          sed -i '/buildToolsVersion/c\        buildToolsVersion "35.0.0"' "$FILE"
 
-          # Set compileSdkVersion 35
-          sed -i 's/compileSdkVersion [0-9]\+/compileSdkVersion 35/' "$FILE"
-          sed -i 's/targetSdkVersion [0-9]\+/targetSdkVersion 35/' "$FILE"
-
+      # 10. Replace launcher icon
       - name: Replace app launcher icon
         run: |
           ICON_PATH="assets/logo.png"
-          for DENSITY in mipmap-hdpi mipmap-mdpi mipmap-xhdpi mipmap-xxhdpi mipmap-xxxhdpi; do
-            cp "$ICON_PATH" "android/app/src/main/res/$DENSITY/ic_launcher.png"
+          RES_DIR="android/app/src/main/res"
+          for size in mipmap-hdpi mipmap-mdpi mipmap-xhdpi mipmap-xxhdpi mipmap-xxxhdpi; do
+            cp "$ICON_PATH" "$RES_DIR/$size/ic_launcher.png"
           done
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v2
-        with:
-          api-level: 35
-          build-tools: 35.0.0
-
-      - name: Install required SDK
+      # 11. Clean Gradle & Flutter caches
+      - name: Clean Gradle & Flutter caches
         run: |
-          sdkmanager "platforms;android-35" "build-tools;35.0.0"
+          flutter clean
+          rm -rf ~/.gradle/caches/
 
+      # 12. Build APK
       - name: Build APK
-        run: flutter build apk --release
+        run: flutter build apk --release --no-tree-shake-icons
 
+      # 13. Build AAB
       - name: Build AAB
-        run: flutter build appbundle --release
+        run: flutter build appbundle --release --no-tree-shake-icons
 
+      # 14. Upload artifacts
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
