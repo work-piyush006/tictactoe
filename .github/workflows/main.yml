@@ -12,11 +12,10 @@ jobs:
   build-android:
     runs-on: ubuntu-latest
     steps:
-      # 1️⃣ Checkout repo
+
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2️⃣ Setup Flutter
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
@@ -24,17 +23,14 @@ jobs:
           channel: stable
           cache: true
 
-      # 3️⃣ Install dependencies
       - name: Install dependencies
         run: flutter pub get
 
-      # 4️⃣ Recreate android folder (fix unsupported Gradle issue)
-      - name: Recreate android folder
+      - name: Generate fresh Android platform
         run: |
           rm -rf android
-          flutter create -t app .
+          flutter create --platforms=android .
 
-      # 5️⃣ Wait until AndroidManifest.xml exists
       - name: Wait for AndroidManifest.xml
         run: |
           COUNT=0
@@ -44,28 +40,23 @@ jobs:
             if [ $COUNT -gt 20 ]; then exit 1; fi
           done
 
-      # 6️⃣ Add Internet permission
       - name: Add Internet permission
         run: |
           MANIFEST="android/app/src/main/AndroidManifest.xml"
           if ! grep -q 'android.permission.INTERNET' "$MANIFEST"; then
             sed -i '/<application/i\    <uses-permission android:name="android.permission.INTERNET"/>' "$MANIFEST"
-          fi
 
-      # 7️⃣ Copy Firebase config if exists
       - name: Copy Firebase config
         run: |
           if [ -f "firebase/google-services.json" ]; then
             mkdir -p android/app
             cp firebase/google-services.json android/app/google-services.json
-          fi
 
-      # 8️⃣ Patch android/build.gradle (Gradle + Kotlin + Google Services)
       - name: Patch android/build.gradle
         run: |
           cat > android/build.gradle <<'EOF'
           buildscript {
-          ext.kotlin_version = "2.0.21"   // ✅ latest stable Kotlin
+          ext.kotlin_version = "2.2.20"
           repositories {
           google()
           mavenCentral()
@@ -83,42 +74,35 @@ jobs:
           mavenCentral()
           }
           }
-
-          rootProject.buildDir = "../build"
-          subprojects {
-          project.buildDir = "${rootProject.buildDir}/${project.name}"
-          }
           EOF
 
-      # 9️⃣ Patch android/app/build.gradle for Ads & Google Services
-      - name: Patch android/app/build.gradle
+      - name: Patch android/app/build.gradle for Ads & Google Services
         run: |
           FILE="android/app/build.gradle"
-
-          # Add google services plugin
+          # Apply Google Services plugin
           if ! grep -q "com.google.gms.google-services" "$FILE"; then
             sed -i '/^plugins {/a\    id "com.google.gms.google-services"' "$FILE"
           fi
-
-          # Ensure compileSdk 35
-          if ! grep -q "compileSdkVersion 35" "$FILE"; then
-            sed -i '/android {/a\    compileSdkVersion 35' "$FILE"
-          fi
-
           # Add Ads dependency
           if ! grep -q "com.google.android.gms:play-services-ads" "$FILE"; then
-            sed -i '/^dependencies {/a\    implementation "com.google.android.gms:play-services-ads:23.4.0"' "$FILE"
+            sed -i '/^dependencies {/a\    implementation "com.google.android.gms:play-services-ads:23.1.0"' "$FILE"
+          fi
+          # Update compileSdkVersion
+          sed -i 's/compileSdkVersion .*/compileSdkVersion 35/' "$FILE"
+
+      - name: Replace default launcher icon
+        run: |
+          ICON_PATH="assets/logo.png"
+          if [ -f "$ICON_PATH" ]; then
+            cp "$ICON_PATH" android/app/src/main/res/mipmap-*/ic_launcher.png
           fi
 
-      # 🔟 Build APK
       - name: Build APK
         run: flutter build apk --release
 
-      # 1️⃣1️⃣ Build AAB
       - name: Build AAB
         run: flutter build appbundle --release
 
-      # 1️⃣2️⃣ Upload artifacts
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
