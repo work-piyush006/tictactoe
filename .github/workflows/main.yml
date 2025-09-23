@@ -45,12 +45,14 @@ jobs:
           MANIFEST="android/app/src/main/AndroidManifest.xml"
           if ! grep -q 'android.permission.INTERNET' "$MANIFEST"; then
             sed -i '/<application/i\    <uses-permission android:name="android.permission.INTERNET"/>' "$MANIFEST"
+            fi
 
       - name: Copy Firebase config
         run: |
           if [ -f "firebase/google-services.json" ]; then
             mkdir -p android/app
             cp firebase/google-services.json android/app/google-services.json
+            fi
 
       - name: Patch android/build.gradle
         run: |
