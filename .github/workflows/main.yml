@@ -37,28 +37,25 @@ jobs:
             echo "v1 embedding detected, migrating to v2 embedding..."
             # Overwrite Kotlin MainActivity
             cat > "$MAIN_ACTIVITY" <<EOF
-package com.example.tictactoe
+            package com.example.tictactoe
+            import io.flutter.embedding.android.FlutterActivity
 
-import io.flutter.embedding.android.FlutterActivity
-
-class MainActivity: FlutterActivity() {
-}
-EOF
-          fi
+            class MainActivity: FlutterActivity() {
+             }
+            EOF
+             fi
 
           if [ -f "$JAVA_ACTIVITY" ]; then
             if grep -q "io.flutter.app.FlutterActivity" "$JAVA_ACTIVITY"; then
               echo "v1 embedding detected in Java MainActivity, migrating..."
               cat > "$JAVA_ACTIVITY" <<EOF
-package com.example.tictactoe;
-
-import io.flutter.embedding.android.FlutterActivity;
-
-public class MainActivity extends FlutterActivity {
-}
-EOF
-            fi
-          fi
+              package com.example.tictactoe;
+              import io.flutter.embedding.android.FlutterActivity;
+              public class MainActivity extends FlutterActivity {
+                }
+              EOF
+              fi
+              fi
 
           # Ensure AndroidManifest.xml has proper activity reference
           if [ -f "$MANIFEST" ]; then
