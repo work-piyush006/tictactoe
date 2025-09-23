@@ -18,7 +18,7 @@ jobs:
 
       # 2️⃣ Setup Flutter stable channel 3.13.0 (Dart 3.3+)
       - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+        uses: flutter/flutter-action@v2
         with:
           channel: stable
           flutter-version: latest
