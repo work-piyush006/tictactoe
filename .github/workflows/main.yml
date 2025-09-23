@@ -16,27 +16,20 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2️⃣ Setup Flutter stable channel 3.13.0 (Dart 3.3+)
+      # 2️⃣ Install latest Flutter stable manually (Dart 3.3+)
       - name: Install Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
-          flutter-version: '3.17.12'
-
-      # 3️⃣ Check Flutter & Dart version
-      - name: Check Flutter & Dart version
         run: |
+          git clone https://github.com/flutter/flutter.git --branch stable --depth 1
+          echo "$PWD/flutter/bin" >> $GITHUB_PATH
           flutter --version
-          dart --version
 
-      # 4️⃣ Install dependencies
+      # 3️⃣ Install dependencies
       - name: Install dependencies
         run: flutter pub get
 
-      # 5️⃣ Migrate Android v1 → v2 embedding if needed
+      # 4️⃣ Migrate Android v1 → v2 embedding if needed
       - name: Migrate Android v1 → v2
         run: |
-          # Paths for MainActivity and manifest
           KOTLIN_MAIN="android/app/src/main/kotlin/com/example/tictactoe/MainActivity.kt"
           JAVA_MAIN="android/app/src/main/java/com/example/tictactoe/MainActivity.java"
           MANIFEST="android/app/src/main/AndroidManifest.xml"
@@ -46,13 +39,14 @@ jobs:
             if grep -q "io.flutter.app.FlutterActivity" "$KOTLIN_MAIN" || grep -q "GeneratedPluginRegistrant.registerWith" "$KOTLIN_MAIN"; then
               echo "Migrating Kotlin MainActivity to v2 embedding..."
               cat > "$KOTLIN_MAIN" <<EOF
-          package com.example.tictactoe
+package com.example.tictactoe
 
-          import io.flutter.embedding.android.FlutterActivity
-          class MainActivity: FlutterActivity() {
-           }
-           EOF
-          fi
+import io.flutter.embedding.android.FlutterActivity
+
+class MainActivity: FlutterActivity() {
+}
+EOF
+            fi
           fi
 
           # Java MainActivity migration
@@ -60,33 +54,34 @@ jobs:
             if grep -q "io.flutter.app.FlutterActivity" "$JAVA_MAIN"; then
               echo "Migrating Java MainActivity to v2 embedding..."
               cat > "$JAVA_MAIN" <<EOF
-              package com.example.tictactoe;
-              import io.flutter.embedding.android.FlutterActivity;
-              public class MainActivity extends FlutterActivity {
-              
-              }
-              EOF
-             fi
-           fi
+package com.example.tictactoe;
+
+import io.flutter.embedding.android.FlutterActivity;
+
+public class MainActivity extends FlutterActivity {
+}
+EOF
+            fi
+          fi
 
           # Update AndroidManifest.xml to point to new MainActivity
           if [ -f "$MANIFEST" ]; then
             sed -i 's|android:name=".*MainActivity"|android:name=".MainActivity"|g' "$MANIFEST"
           fi
 
-      # 6️⃣ Clean project
+      # 5️⃣ Clean project
       - name: Clean project
         run: flutter clean
 
-      # 7️⃣ Build APK
+      # 6️⃣ Build APK
       - name: Build APK
         run: flutter build apk --release
 
-      # 8️⃣ Build AAB
+      # 7️⃣ Build AAB
       - name: Build AAB
         run: flutter build appbundle --release
 
-      # 9️⃣ Upload build artifacts
+      # 8️⃣ Upload build artifacts
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
