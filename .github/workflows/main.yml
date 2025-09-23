@@ -1,4 +1,4 @@
- name: Flutter Android CI
+name: Flutter Android CI
 
 on:
   push:
@@ -21,6 +21,8 @@ jobs:
           flutter-version: "3.22.2"
           channel: stable
           cache: true
+
+      # ... rest of your steps ...
 
       # ... rest of your steps here ...
 
