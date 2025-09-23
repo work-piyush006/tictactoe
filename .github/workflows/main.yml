@@ -69,8 +69,8 @@ jobs:
             mkdir -p android/app
             cp firebase/google-services.json android/app/google-services.json
           fi
-
-      # 10. Patch android/build.gradle (Kotlin + Google Services)
+          
+        # 10. Patch android/build.gradle (Kotlin + Google Services)
       - name: Patch android/build.gradle
         run: |
           cat > android/build.gradle <<EOF
