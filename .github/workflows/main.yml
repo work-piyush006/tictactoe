@@ -1,4 +1,4 @@
-name: Flutter Android CI
+ name: Flutter Android CI
 
 on:
   push:
@@ -79,21 +79,21 @@ jobs:
           repositories {
           google()
           mavenCentral()
-           }
-          dependencies {
-          classpath 'com.android.tools.build:gradle:8.1.0'
-          classpath 'com.google.gms:google-services:4.4.2'
-          classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:\$kotlin_version"
+          }
+         dependencies {
+            classpath 'com.android.tools.build:gradle:8.1.0'
+            classpath 'com.google.gms:google-services:4.4.2'
+            classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:\$kotlin_version"
            }
           }
 
-          allprojects {
-          repositories {
-          google()
-          mavenCentral()
-           }
-          }
-         EOF
+           allprojects {
+           repositories {
+           google()
+           mavenCentral()
+            }
+            }
+            EOF
 
       # 11. Patch android/app/build.gradle for Ads & Google Services
       - name: Patch android/app/build.gradle
