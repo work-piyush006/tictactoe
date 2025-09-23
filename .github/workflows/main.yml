@@ -16,12 +16,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2️⃣ Install latest Flutter stable manually (Dart 3.3+)
+      # 2️⃣ Install Flutter manually and setup PATH
       - name: Install Flutter
         run: |
-              git clone https://github.com/flutter/flutter.git --branch stable --depth 1
-              export PATH="$PWD/flutter/bin:$PATH"
-              flutter --version
+          git clone https://github.com/flutter/flutter.git --branch stable --depth 1
+          echo "$PWD/flutter/bin" >> $GITHUB_PATH
+          flutter --version
+          dart --version
 
       # 3️⃣ Install dependencies
       - name: Install dependencies
@@ -39,10 +40,9 @@ jobs:
             if grep -q "io.flutter.app.FlutterActivity" "$KOTLIN_MAIN" || grep -q "GeneratedPluginRegistrant.registerWith" "$KOTLIN_MAIN"; then
               echo "Migrating Kotlin MainActivity to v2 embedding..."
               cat > "$KOTLIN_MAIN" <<EOF
-              package com.example.tictactoe
-
+          package com.example.tictactoe
           import io.flutter.embedding.android.FlutterActivity
-          class   MainActivity: FlutterActivity() {
+          class MainActivity: FlutterActivity() {
           
           }
           EOF
