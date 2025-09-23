@@ -54,19 +54,19 @@ jobs:
             cp firebase/google-services.json android/app/google-services.json
             fi
 
-      - name: Patch android/build.gradle
+      - name: Patch android/build.gradle (Kotlin + Google Services)
         run: |
-          cat > android/build.gradle <<'EOF'
+          cat > android/build.gradle <<EOF
           buildscript {
-          ext.kotlin_version = "2.2.20"
+          ext.kotlin_version = '2.2.20'
           repositories {
-          google()
-          mavenCentral()
-          }
-          dependencies {
-          classpath "com.android.tools.build:gradle:8.1.0"
-          classpath "com.google.gms:google-services:4.4.2"
-          classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
+           google()
+           mavenCentral()
+           }
+           dependencies {
+           classpath 'com.android.tools.build:gradle:8.1.0'
+          classpath 'com.google.gms:google-services:4.4.2'
+          classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:\$kotlin_version"
           }
           }
 
@@ -77,27 +77,37 @@ jobs:
           }
           }
           EOF
-
+ 
       - name: Patch android/app/build.gradle for Ads & Google Services
         run: |
           FILE="android/app/build.gradle"
-          # Apply Google Services plugin
+          # Add google services plugin into plugins block
           if ! grep -q "com.google.gms.google-services" "$FILE"; then
             sed -i '/^plugins {/a\    id "com.google.gms.google-services"' "$FILE"
           fi
-          # Add Ads dependency
+
+          # Add Ads dependency inside dependencies
           if ! grep -q "com.google.android.gms:play-services-ads" "$FILE"; then
             sed -i '/^dependencies {/a\    implementation "com.google.android.gms:play-services-ads:23.1.0"' "$FILE"
           fi
-          # Update compileSdkVersion
-          sed -i 's/compileSdkVersion .*/compileSdkVersion 35/' "$FILE"
 
-      - name: Replace default launcher icon
+          # Set compileSdkVersion 35
+          sed -i 's/compileSdkVersion [0-9]\+/compileSdkVersion 35/' "$FILE"
+          sed -i 's/targetSdkVersion [0-9]\+/targetSdkVersion 35/' "$FILE"
+
+      - name: Replace app launcher icon
         run: |
-         ICON_PATH="assets/logo.png"
-         for DIR in android/app/src/main/res/mipmap-*/; do
-         cp "$ICON_PATH" "$DIR/ic_launcher.png"
-         done
+          ICON_PATH="assets/logo.png"
+          for DENSITY in mipmap-hdpi mipmap-mdpi mipmap-xhdpi mipmap-xxhdpi mipmap-xxxhdpi; do
+            cp "$ICON_PATH" "android/app/src/main/res/$DENSITY/ic_launcher.png"
+          done
+
+      - name: Accept Android licenses
+        run: yes | sdkmanager --licenses
+
+      - name: Install required SDK
+        run: |
+          sdkmanager "platforms;android-35" "build-tools;35.0.0"
 
       - name: Build APK
         run: flutter build apk --release
